@@ -1,0 +1,14 @@
+{
+  "provider": "OfficeWhere",
+  "items": [
+    {
+      "kind": "document",
+      "file_id": "doc-1",
+      "title": "contextWhere architecture",
+      "snippet": "Raw providers to evidence ledger to compiled wiki",
+      "modified_at": "2026-07-02T00:00:00+09:00",
+      "provenance": "officewhere_search",
+      "local_path": "C:/Users/secret/contextWhere.docx"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "provider": "MailWhere",
+  "contract_version": "v1",
+  "items": [
+    {
+      "kind": "task",
+      "id": "task-1",
+      "title": "Prepare contextWhere plan",
+      "due_at": "2026-07-02T09:00:00+09:00",
+      "reason": "User asked for deployable context system",
+      "evidence_snippet": "Need real provider ingest and wiki automation",
+      "source_sender_display": "User",
+      "source_received_at": "2026-07-02T08:30:00+09:00",
+      "provenance": "mailwhere_task",
+      "raw_body": "SECRET RAW BODY",
+      "full_addresses": ["secret@example.com"],
+      "attachments": ["secret.docx"],
+      "prompt_logs": "do not store"
+    }
+  ]
+}
