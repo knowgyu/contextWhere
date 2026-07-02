@@ -39,6 +39,6 @@ If `wiki apply` rejects a draft, read the audit JSON. Common causes:
 
 - `before_hash mismatch`: the wiki changed after the draft was made; regenerate the draft.
 - `unknown evidence_ids`: the draft references evidence not present in the DB.
-- `after_content is not accepted`: only typed operations are accepted in 0.1.0.
+- `after_content is not accepted`: only typed operations are accepted in 0.1.x.
 
 Applied audits include rollback content for changed files.

@@ -390,3 +390,34 @@ def test_lint_understands_repo_wiki_frontmatter():
     codes = {(i["path"], i["code"]) for i in issues}
     assert ("AGENTS.md", "missing-frontmatter") not in codes
     assert ("projects/contextwhere.md", "missing-evidence") not in codes
+
+
+def test_verify_command_runs_smoke(capsys):
+    assert run_cli(["verify", "--json"]) == 0
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["ok"] is True
+    assert [step["name"] for step in data["steps"]] == ["init", "ingest", "query", "wiki-draft-apply", "lint", "capture-session"]
+
+
+def test_verify_command_creates_child_under_named_root(tmp_path, capsys):
+    parent = tmp_path / "verify-parent"
+    assert run_cli(["verify", "--verify-root", str(parent), "--json"]) == 0
+    data = json.loads(capsys.readouterr().out)
+    verify_root = Path(data["root"])
+    assert data["ok"] is True
+    assert data["kept"] is True
+    assert verify_root.parent == parent.resolve()
+    assert verify_root.name.startswith("contextwhere-verify-")
+    assert (verify_root / ".contextwhere" / "contextwhere.sqlite3").exists()
+
+
+def test_verify_root_preserves_existing_wiki(tmp_path, capsys):
+    parent = tmp_path / "existing"
+    parent.mkdir()
+    write_wiki(parent)
+    original_index = (parent / "work_wiki" / "index.md").read_text(encoding="utf-8")
+    assert run_cli(["verify", "--verify-root", str(parent), "--json"]) == 0
+    data = json.loads(capsys.readouterr().out)
+    assert Path(data["root"]).parent == parent.resolve()
+    assert (parent / "work_wiki" / "index.md").read_text(encoding="utf-8") == original_index

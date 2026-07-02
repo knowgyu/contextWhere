@@ -27,6 +27,12 @@ It is not a generic vector database. It separates raw providers, sanitized evide
 - Sensitive/raw fields are omitted by default and omissions are auditable.
 - Wiki writes are deliberate, constrained, and reversible through audit logs.
 
+## 0.1.1 operational foundation
+
+- Korean README aligned to the final-goal handoff context.
+- `contextwhere verify --json` install-time smoke command.
+- Cron/systemd schedule examples for Ubuntu-style operations.
+
 ## Roadmap
 
 1. 0.1.x: strengthen provider compatibility, add scheduled ingest examples, broaden wiki operations with the same typed/audited model.

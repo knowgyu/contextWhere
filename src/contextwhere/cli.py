@@ -15,6 +15,7 @@ from .providers.mailwhere import MailWhereProvider
 from .providers.officewhere import OfficeWhereProvider
 from .schemas import evidence_from_item
 from .wiki import apply_wiki_draft, create_wiki_draft, lint_wiki
+from .verify import run_verify
 
 
 def emit(data: Any, as_json: bool = False) -> None:
@@ -199,6 +200,12 @@ def cmd_wiki_apply(args: argparse.Namespace) -> int:
     return 0 if audit_data["status"] == "applied" else 2
 
 
+def cmd_verify(args: argparse.Namespace) -> int:
+    result = run_verify(Path(args.verify_root) if args.verify_root else None, keep=args.keep)
+    emit(result, args.json)
+    return 0 if result["ok"] else 2
+
+
 def add_common(p: argparse.ArgumentParser) -> None:
     p.add_argument("--json", action="store_true")
     p.add_argument("--root", dest="root_override")
@@ -251,6 +258,12 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(p)
     p.add_argument("--file")
     p.set_defaults(func=cmd_capture_session)
+
+    p = sub.add_parser("verify")
+    p.add_argument("--json", action="store_true")
+    p.add_argument("--verify-root", help="Optional parent directory under which a contextwhere-verify-* root is created")
+    p.add_argument("--keep", action="store_true", help="Keep the temporary verification root and print its path")
+    p.set_defaults(func=cmd_verify)
 
     wiki = sub.add_parser("wiki")
     wiki_sub = wiki.add_subparsers(dest="wiki_command", required=True)

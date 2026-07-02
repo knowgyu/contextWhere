@@ -1,0 +1,9 @@
+[Unit]
+Description=contextWhere read-only provider ingest
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/contextWhere
+ExecStart=/opt/contextWhere/.venv/bin/contextwhere ingest --provider mailwhere --limit 100 --json
+ExecStart=/opt/contextWhere/.venv/bin/contextwhere lint --json

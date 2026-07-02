@@ -1,6 +1,6 @@
 # contextWhere release guide
 
-## 0.1.0 release checklist
+## 0.1.x release checklist
 
 1. Verify version alignment:
    - `pyproject.toml` `[project].version`
@@ -9,6 +9,7 @@
    ```bash
    python -m compileall -q src tests
    pytest -q
+   python -m contextwhere verify --json
    ```
 3. Run smoke flow in a temporary root:
    ```bash
@@ -30,7 +31,7 @@
 6. Commit with the Lore commit protocol.
 7. Tag the release:
    ```bash
-   git tag -a v0.1.0 -m "v0.1.0: safe provider ingest foundation"
+   git tag -a vX.Y.Z -m "vX.Y.Z: <release summary>"
    git push origin main --tags
    ```
 
