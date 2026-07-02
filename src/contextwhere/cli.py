@@ -16,6 +16,7 @@ from .providers.officewhere import OfficeWhereProvider
 from .schemas import evidence_from_item
 from .wiki import apply_wiki_draft, create_wiki_draft, lint_wiki
 from .verify import run_verify
+from .entities import extract_entities, list_entities, list_relationships
 
 
 def emit(data: Any, as_json: bool = False) -> None:
@@ -206,6 +207,22 @@ def cmd_verify(args: argparse.Namespace) -> int:
     return 0 if result["ok"] else 2
 
 
+def cmd_entities(args: argparse.Namespace) -> int:
+    paths = resolve_paths(args.root)
+    ensure_dirs(paths)
+    init_db(paths.db_path)
+    if args.entities_command == "extract":
+        result = extract_entities(paths.db_path, query=args.query or "", limit=args.limit)
+    elif args.entities_command == "list":
+        result = {"ok": True, "items": list_entities(paths.db_path, limit=args.limit)}
+    elif args.entities_command == "relationships":
+        result = {"ok": True, "items": list_relationships(paths.db_path, limit=args.limit)}
+    else:
+        raise SystemExit(f"unsupported entities command: {args.entities_command}")
+    emit(result, args.json)
+    return 0
+
+
 def add_common(p: argparse.ArgumentParser) -> None:
     p.add_argument("--json", action="store_true")
     p.add_argument("--root", dest="root_override")
@@ -264,6 +281,23 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--verify-root", help="Optional parent directory under which a contextwhere-verify-* root is created")
     p.add_argument("--keep", action="store_true", help="Keep the temporary verification root and print its path")
     p.set_defaults(func=cmd_verify)
+
+    entities = sub.add_parser("entities")
+    add_common(entities)
+    entities_sub = entities.add_subparsers(dest="entities_command", required=True)
+    p = entities_sub.add_parser("extract")
+    add_common(p)
+    p.add_argument("--query", default="")
+    p.add_argument("--limit", type=int, default=100)
+    p.set_defaults(func=cmd_entities)
+    p = entities_sub.add_parser("list")
+    add_common(p)
+    p.add_argument("--limit", type=int, default=100)
+    p.set_defaults(func=cmd_entities)
+    p = entities_sub.add_parser("relationships")
+    add_common(p)
+    p.add_argument("--limit", type=int, default=100)
+    p.set_defaults(func=cmd_entities)
 
     wiki = sub.add_parser("wiki")
     wiki_sub = wiki.add_subparsers(dest="wiki_command", required=True)

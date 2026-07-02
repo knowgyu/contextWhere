@@ -43,6 +43,33 @@ CREATE TABLE IF NOT EXISTS ingest_log (
   created_at TEXT NOT NULL,
   details TEXT NOT NULL DEFAULT '{}'
 );
+CREATE TABLE IF NOT EXISTS entities (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entity_id TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  confidence TEXT NOT NULL DEFAULT 'low',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS evidence_entities (
+  evidence_id TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  relation TEXT NOT NULL DEFAULT 'mentions',
+  confidence TEXT NOT NULL DEFAULT 'low',
+  created_at TEXT NOT NULL,
+  PRIMARY KEY(evidence_id, entity_id, relation)
+);
+CREATE TABLE IF NOT EXISTS relationships (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  subject_entity_id TEXT NOT NULL,
+  predicate TEXT NOT NULL,
+  object_entity_id TEXT NOT NULL,
+  evidence_id TEXT NOT NULL,
+  confidence TEXT NOT NULL DEFAULT 'low',
+  created_at TEXT NOT NULL,
+  UNIQUE(subject_entity_id, predicate, object_entity_id, evidence_id)
+);
 """
 
 FTS_SCHEMA = """

@@ -20,6 +20,18 @@ contextwhere wiki apply .contextwhere/drafts/wiki/<draft>.json --json
 contextwhere lint --json
 ```
 
+## Entity extraction
+
+Evidence ingest 후 graph seed를 만들려면 다음을 실행한다.
+
+```bash
+contextwhere entities extract --json
+contextwhere entities list --json
+contextwhere entities relationships --json
+```
+
+0.2.0 extractor는 안전한 deterministic 후보 추출만 수행한다. Provider text를 명령으로 실행하거나 wiki에 임의 문장을 쓰지 않는다.
+
 ## Backup
 
 Back up these paths together:

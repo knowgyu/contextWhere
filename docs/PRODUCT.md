@@ -33,10 +33,16 @@ It is not a generic vector database. It separates raw providers, sanitized evide
 - `contextwhere verify --json` install-time smoke command.
 - Cron/systemd schedule examples for Ubuntu-style operations.
 
+## 0.2.0 graph seed
+
+- Evidence rows에서 deterministic entity candidate를 추출한다.
+- `entities`, `evidence_entities`, `relationships` SQLite tables를 생성한다.
+- `entities extract/list/relationships` CLI로 wiki/agent가 관계 seed를 조회할 수 있다.
+
 ## Roadmap
 
 1. 0.1.x: strengthen provider compatibility, add scheduled ingest examples, broaden wiki operations with the same typed/audited model.
-2. 0.2.x: entity extraction and relationship tables for people/projects/decisions/tasks.
+2. 0.2.0: deterministic entity extraction and relationship seed. 0.2.x: richer people/projects/decisions/tasks extraction and promotion workflows.
 3. 0.3.x: MCP server and agent tool surfaces.
 4. 0.4.x: selective local embedding/vector layer for ambiguous recall.
 5. 1.0: stable local-first context platform with documented provider contracts, backup/restore, release artifacts, and migration policy.

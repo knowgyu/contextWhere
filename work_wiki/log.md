@@ -16,3 +16,10 @@ Initialized contextWhere folder from autoresearch discussion. Copied research re
 - `contextwhere verify --json` 설치 후 smoke 명령을 추가했다.
 - Ubuntu cron/systemd 운영 스케줄 예제를 추가했다.
 - Evidence: `docs/releases/v0.1.1.md`, `src/contextwhere/verify.py`, tests under `tests/`.
+
+## 2026-07-03 — contextWhere 0.2.0 entity graph seed
+
+- Evidence ledger 위에 deterministic entity extraction과 relationship seed tables를 추가했다.
+- `contextwhere entities extract/list/relationships` CLI를 추가했다.
+- `contextwhere verify --json` smoke에 entity extraction 단계를 포함했다.
+- Evidence: `docs/releases/v0.2.0.md`, `src/contextwhere/entities.py`, tests under `tests/`.

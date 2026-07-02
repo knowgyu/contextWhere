@@ -1,6 +1,6 @@
 # contextWhere install and quick start
 
-contextWhere 0.1.1 is a local-first Python/SQLite CLI. It is safe to run on a workstation or server because provider ingest is read-only and wiki writes happen only through audited `wiki apply` drafts.
+contextWhere 0.2.0 is a local-first Python/SQLite CLI. It is safe to run on a workstation or server because provider ingest is read-only and wiki writes happen only through audited `wiki apply` drafts.
 
 ## Requirements
 
@@ -31,6 +31,8 @@ contextwhere wiki draft --query contextWhere --output .contextwhere/drafts/wiki/
 contextwhere wiki apply .contextwhere/drafts/wiki/latest.json --json
 contextwhere lint --json
 contextwhere capture-session --file tests/fixtures/session.md --json
+contextwhere entities extract --json
+contextwhere entities list --json
 ```
 
 ## Live provider examples

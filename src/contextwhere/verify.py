@@ -11,6 +11,7 @@ from .db import init_db, insert_evidence, query_evidence_with_mode
 from .schemas import evidence_from_item
 from .wiki import apply_wiki_draft, create_wiki_draft, lint_wiki
 from .capture import capture_session_text
+from .entities import extract_entities, list_entities
 
 
 @dataclass
@@ -112,6 +113,14 @@ def run_verify(root: Path | None = None, keep: bool = False) -> dict:
             raise RuntimeError(f"lint errors: {errors}")
         return f"{len(issues)} issue(s)"
 
+    def entities_step() -> str:
+        paths = resolve_paths(work_root)
+        result = extract_entities(paths.db_path, query="contextWhere", limit=10)
+        entities = list_entities(paths.db_path, limit=10)
+        if not entities:
+            raise RuntimeError(f"no entities extracted: {result}")
+        return str(len(entities))
+
     def capture_step() -> str:
         paths = resolve_paths(work_root)
         record = capture_session_text("Goal: verify contextWhere\nVerification: pytest-style smoke\n", "verify:session")
@@ -127,6 +136,7 @@ def run_verify(root: Path | None = None, keep: bool = False) -> dict:
             ("query", query_step),
             ("wiki-draft-apply", wiki_step),
             ("lint", lint_step),
+            ("entities-extract", entities_step),
             ("capture-session", capture_step),
         ]:
             run_step(steps, name, fn)

@@ -397,7 +397,7 @@ def test_verify_command_runs_smoke(capsys):
     out = capsys.readouterr().out
     data = json.loads(out)
     assert data["ok"] is True
-    assert [step["name"] for step in data["steps"]] == ["init", "ingest", "query", "wiki-draft-apply", "lint", "capture-session"]
+    assert [step["name"] for step in data["steps"]] == ["init", "ingest", "query", "wiki-draft-apply", "lint", "entities-extract", "capture-session"]
 
 
 def test_verify_command_creates_child_under_named_root(tmp_path, capsys):
@@ -421,3 +421,28 @@ def test_verify_root_preserves_existing_wiki(tmp_path, capsys):
     data = json.loads(capsys.readouterr().out)
     assert Path(data["root"]).parent == parent.resolve()
     assert (parent / "work_wiki" / "index.md").read_text(encoding="utf-8") == original_index
+
+
+def test_entities_extract_list_and_relationships(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli(["init", "--root", str(tmp_path)]) == 0
+    assert run_cli(["ingest", "--provider", "mailwhere", "--fixture", str(ROOT_FIXTURES / "mailwhere_tasks.json"), "--root", str(tmp_path)]) == 0
+    capsys.readouterr()
+    assert run_cli(["entities", "extract", "--root", str(tmp_path), "--json"]) == 0
+    extract_out = json.loads(capsys.readouterr().out)
+    assert extract_out["ok"] is True
+    assert extract_out["entities_seen"] >= 1
+    assert run_cli(["entities", "list", "--root", str(tmp_path), "--json"]) == 0
+    listed = json.loads(capsys.readouterr().out)
+    names = {item["name"] for item in listed["items"]}
+    assert "contextWhere" in names
+    assert run_cli(["entities", "relationships", "--root", str(tmp_path), "--json"]) == 0
+    rels = json.loads(capsys.readouterr().out)
+    assert rels["ok"] is True
+
+
+def test_verify_command_includes_entity_extraction(capsys):
+    assert run_cli(["verify", "--json"]) == 0
+    data = json.loads(capsys.readouterr().out)
+    step_names = [step["name"] for step in data["steps"]]
+    assert "entities-extract" in step_names
