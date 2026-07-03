@@ -1,3 +1,3 @@
-"""contextWhere local-first evidence/wiki automation."""
+"""contextWhere local-first workspace context OS."""
 
-__version__ = "0.10.0"
+__version__ = "0.11.0"

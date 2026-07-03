@@ -415,7 +415,7 @@ def test_verify_command_runs_smoke(capsys):
     out = capsys.readouterr().out
     data = json.loads(out)
     assert data["ok"] is True
-    assert [step["name"] for step in data["steps"]] == ["init", "ingest", "query", "wiki-draft-apply", "lint", "entities-extract", "recall-bundle", "capture-session", "status"]
+    assert [step["name"] for step in data["steps"]] == ["init", "ingest", "query", "context-pack", "wiki-draft-apply", "lint", "entities-extract", "recall-bundle", "capture-session", "capture-local", "status"]
 
 
 def test_verify_command_creates_child_under_named_root(tmp_path, capsys):
@@ -731,3 +731,162 @@ def test_provider_matrix_documents_safe_provider_contract(capsys):
     assert providers["officewhere"]["read_only"] is True
     assert providers["mailwhere"]["mutating_actions"] == []
     assert "non-loopback URLs rejected" in providers["officewhere"]["safety_boundaries"]
+
+
+def test_context_pack_scope_filters_and_manifest(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli(["init", "--root", str(tmp_path)]) == 0
+    capsys.readouterr()
+    paths = resolve_paths(tmp_path)
+    from contextwhere.db import insert_evidence
+    from contextwhere.schemas import EvidenceRecord
+    insert_evidence(paths.db_path, [
+        EvidenceRecord(
+            provider="manual-wiki",
+            source_ref="ctx",
+            kind="decision",
+            title="contextWhere scope decision",
+            snippet="contextWhere should build scoped context packs.",
+            confidence="high",
+            metadata={"tenant": "repo:contextWhere", "scope": "repo:contextWhere", "source_kind": "manual-wiki", "source_locator": "file://work_wiki/projects/contextwhere.md"},
+        ),
+        EvidenceRecord(
+            provider="manual-wiki",
+            source_ref="other",
+            kind="decision",
+            title="contextWhere other scope",
+            snippet="contextWhere phrase exists but should not leak.",
+            confidence="high",
+            metadata={"tenant": "repo:Other", "scope": "repo:Other", "source_kind": "manual-wiki", "source_locator": "file://other.md"},
+        ),
+    ])
+    assert run_cli(["context", "pack", "--root", str(tmp_path), "--query", "contextWhere", "--scope", "repo:contextWhere", "--json"]) == 0
+    pack = json.loads(capsys.readouterr().out)
+    assert pack["format"] == "contextwhere-context-pack-v1"
+    assert pack["manifest"]["scope_filter"] == "repo:contextWhere"
+    assert [item["source_locator"] for item in pack["items"]] == ["file://work_wiki/projects/contextwhere.md"]
+    assert pack["manifest"]["included"][0]["reason"]
+    assert any(item["reason"] == "out_of_scope" for item in pack["manifest"]["omitted"])
+
+
+def test_context_pack_omits_stale_superseded_and_sensitive(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli(["init", "--root", str(tmp_path)]) == 0
+    capsys.readouterr()
+    paths = resolve_paths(tmp_path)
+    from contextwhere.db import insert_evidence
+    from contextwhere.schemas import EvidenceRecord
+    base = {"tenant": "repo:contextWhere", "scope": "repo:contextWhere", "source_kind": "manual-wiki"}
+    insert_evidence(paths.db_path, [
+        EvidenceRecord(provider="manual-wiki", source_ref="fresh", kind="decision", title="fresh contextWhere", snippet="fresh", metadata={**base, "source_locator": "fresh"}),
+        EvidenceRecord(provider="manual-wiki", source_ref="stale", kind="decision", title="stale contextWhere", snippet="stale", metadata={**base, "source_locator": "stale", "stale_after": "2000-01-01T00:00:00Z"}),
+        EvidenceRecord(provider="manual-wiki", source_ref="old", kind="decision", title="old contextWhere", snippet="old", metadata={**base, "source_locator": "old", "superseded_by": "fresh"}),
+        EvidenceRecord(provider="manual-wiki", source_ref="secret", kind="decision", title="secret contextWhere", snippet="secret", sensitivity="confidential", metadata={**base, "source_locator": "secret"}),
+    ])
+    assert run_cli(["context", "pack", "--root", str(tmp_path), "--query", "contextWhere", "--scope", "repo:contextWhere", "--json"]) == 0
+    pack = json.loads(capsys.readouterr().out)
+    locators = {item["source_locator"] for item in pack["items"]}
+    assert locators == {"fresh"}
+    omitted = {item["reason"]: item["count"] for item in pack["manifest"]["omitted"]}
+    assert omitted["stale"] == 1
+    assert omitted["superseded"] == 1
+    assert omitted["too_sensitive"] == 1
+
+
+def test_provider_matrix_lists_workspace_providers(capsys):
+    assert run_cli(["providers", "matrix", "--json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    providers = {item["provider"]: item for item in result["providers"]}
+    for name in ["agent-session", "repo-state", "git", "github", "jenkins-deploy", "mailwhere", "officewhere", "manual-wiki"]:
+        assert name in providers
+        assert providers[name]["read_only"] is True
+    assert "no full-corpus sweep" in providers["officewhere"]["safety_boundaries"]
+    assert providers["git"]["mutating_actions"] == []
+
+
+def test_capture_local_imports_git_and_omx_with_scope_metadata(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli(["init", "--root", str(tmp_path)]) == 0
+    capsys.readouterr()
+    (tmp_path / ".omx" / "plans").mkdir(parents=True)
+    (tmp_path / ".omx" / "plans" / "plan.md").write_text("Goal: contextWhere local capture\n", encoding="utf-8")
+    import subprocess
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=tmp_path, check=True)
+    (tmp_path / "tracked.txt").write_text("tracked", encoding="utf-8")
+    subprocess.run(["git", "add", "tracked.txt"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-m", "seed"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
+    assert run_cli(["capture-local", "--root", str(tmp_path), "--git", "--omx", "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["inserted"] >= 3
+    paths = resolve_paths(tmp_path)
+    with connect(paths.db_path) as conn:
+        rows = conn.execute("select provider, metadata from evidence").fetchall()
+    providers = {row["provider"] for row in rows}
+    assert {"git", "agent-session"} <= providers
+    metas = [json.loads(row["metadata"]) for row in rows]
+    assert all(meta.get("scope") == f"repo:{tmp_path.name}" for meta in metas if meta.get("scope"))
+
+
+def test_ingest_stamps_scope_source_locator_and_context_pack_uses_current_scope(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli(["init", "--root", str(tmp_path)]) == 0
+    capsys.readouterr()
+    assert run_cli(["ingest", "--provider", "mailwhere", "--fixture", str(ROOT_FIXTURES / "mailwhere_tasks.json"), "--root", str(tmp_path), "--json"]) == 0
+    capsys.readouterr()
+    paths = resolve_paths(tmp_path)
+    with connect(paths.db_path) as conn:
+        row = conn.execute("select metadata from evidence where provider='mailwhere' and kind='task' limit 1").fetchone()
+    meta = json.loads(row["metadata"])
+    assert meta["scope"] == f"repo:{tmp_path.name}"
+    assert meta["tenant"].startswith(f"repo:{tmp_path.name}:")
+    assert meta["source_locator"].startswith("mailwhere:task:")
+    assert run_cli(["context", "pack", "--root", str(tmp_path), "--query", "contextWhere", "--json"]) == 0
+    pack = json.loads(capsys.readouterr().out)
+    assert pack["manifest"]["scope_filter"] == f"repo:{tmp_path.name}"
+    assert pack["items"]
+
+
+def test_context_pack_treats_unknown_and_secret_sensitivity_as_too_sensitive(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli(["init", "--root", str(tmp_path)]) == 0
+    capsys.readouterr()
+    paths = resolve_paths(tmp_path)
+    from contextwhere.db import insert_evidence
+    from contextwhere.schemas import EvidenceRecord
+    meta = {"tenant": "repo:contextWhere", "scope": "repo:contextWhere", "source_kind": "manual-wiki"}
+    insert_evidence(paths.db_path, [
+        EvidenceRecord(provider="manual-wiki", source_ref="secret-alias", kind="decision", title="contextWhere secret", snippet="secret", sensitivity="secret", metadata={**meta, "source_locator": "secret"}),
+        EvidenceRecord(provider="manual-wiki", source_ref="weird", kind="decision", title="contextWhere weird", snippet="weird", sensitivity="restricted-plus", metadata={**meta, "source_locator": "weird"}),
+    ])
+    assert run_cli(["context", "pack", "--root", str(tmp_path), "--query", "contextWhere", "--scope", "repo:contextWhere", "--json"]) == 0
+    pack = json.loads(capsys.readouterr().out)
+    assert pack["items"] == []
+    omitted = {item["reason"]: item["count"] for item in pack["manifest"]["omitted"]}
+    assert omitted["too_sensitive"] == 2
+
+
+def test_officewhere_ingest_requires_explicit_query(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli(["init", "--root", str(tmp_path)]) == 0
+    capsys.readouterr()
+    assert run_cli(["ingest", "--provider", "officewhere", "--root", str(tmp_path), "--json"]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is False
+    assert result["unavailable"]["reason"] == "query_required"
+
+
+def test_capture_local_git_failure_is_reported_not_silent(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli(["init", "--root", str(tmp_path)]) == 0
+    capsys.readouterr()
+    (tmp_path / ".git").write_text("not a git dir", encoding="utf-8")
+    assert run_cli(["capture-local", "--root", str(tmp_path), "--git", "--json"]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is False
+    paths = resolve_paths(tmp_path)
+    with connect(paths.db_path) as conn:
+        row = conn.execute("select provider, kind, metadata from evidence where provider='git'").fetchone()
+    assert row["kind"] == "unavailable"
+    assert json.loads(row["metadata"])["returncode"] != 0

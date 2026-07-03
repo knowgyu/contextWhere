@@ -54,3 +54,10 @@ Initialized contextWhere folder from autoresearch discussion. Copied research re
 - Added static `contextwhere providers matrix --json` for deployment/provider contracts.
 - Matrix documents MailWhere and OfficeWhere transport, live requirements, ingest kinds, and safety boundaries.
 - Evidence: `docs/releases/v0.7.0.md`, `src/contextwhere/provider_matrix.py`, tests under `tests/`.
+
+## 2026-07-03 — workspace context OS goal correction
+
+- Reframed contextWhere from MailWhere/OfficeWhere-centered memory into a workspace context OS.
+- Added tenant/scope/source-locator/context-pack language to durable docs and wiki rules.
+- Preserved MailWhere and OfficeWhere as providers, not product boundary.
+- Evidence: `docs/DESIGN.md`, `context/decisions/0002-workspace-context-os.md`, `.omx/plans/prd-contextwhere-workspace-context-os-20260703T101943Z.md`.

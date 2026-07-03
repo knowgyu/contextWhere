@@ -2,11 +2,13 @@
 type: project
 status: active
 sensitivity: internal
-source_count: 1
+source_count: 3
 evidence_ids:
   - autoresearch:2026-work-context-llm-wiki-report
-last_verified: 2026-07-02
-stale_after: 2026-08-02
+  - decision:0001-project-direction
+  - decision:0002-workspace-context-os
+last_verified: 2026-07-03
+stale_after: 2026-08-03
 confidence: high
 related:
   - ../systems/mailwhere.md
@@ -16,16 +18,30 @@ related:
 
 # contextWhere
 
-contextWhere is the planned automation engine and LLM-maintained work wiki for preserving work context from mail, office documents, and coding agents.
+contextWhere is a local-first workspace context OS. It collects evidence from repo-local `.omx`, agent sessions, git/GitHub, Jenkins/deploy systems, MailWhere, OfficeWhere, and related tools, then maintains evidence-linked Markdown wiki knowledge and task-specific context packs.
 
 ## Current thesis
 
-Use MailWhere and OfficeWhere as read-only evidence providers, then let agents maintain a compiled Markdown wiki with source-backed claims. Add search/lint/automation first, then graph/memory when relationship data accumulates.
+The core product is not mail/document memory. MailWhere and OfficeWhere are optional providers inside a broader scoped evidence system.
+
+Use this order:
+
+1. raw providers/work surfaces;
+2. evidence ledger with source locators and tenant/scope metadata;
+3. compiled Markdown wiki;
+4. context pack router for agents;
+5. optional graph/vector only after relationship data justifies it.
 
 ## Current foundation status
 
-0.1.0 now provides the first project skeleton: versioned Python CLI, SQLite evidence schema, read-only provider adapters, constrained wiki draft/apply boundaries, wiki lint, capture-session, tests, and release/operations docs.
+v0.10.0 provides Python/SQLite CLI foundations: provider ingest, wiki draft/apply boundaries, lint, capture-session, entities, recall bundles, backup/restore, status, `run`/`daily`, autostart planning, and MailWhere file-link evidence.
 
-## Next release-hardening goal
+## Next product goal
 
-Exercise live MailWhere/OfficeWhere environments, add scheduled ingest examples, and expand typed wiki operations without weakening the audited apply boundary.
+Reframe the next slice around workspace context OS semantics:
+
+- tenant/scope/source-locator vocabulary;
+- provider registry for agent sessions, repo/git/GitHub, Jenkins/deploy, MailWhere, OfficeWhere;
+- context pack generation;
+- automatic local capture for `.omx` and agent-session evidence;
+- selective OfficeWhere lookup rather than full document mirroring.

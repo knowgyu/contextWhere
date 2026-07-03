@@ -18,7 +18,7 @@ from .db import init_db, insert_evidence, log_ingest, query_evidence_with_mode
 from .providers.base import ProviderResult, load_fixture_records
 from .providers.mailwhere import MailWhereProvider
 from .providers.officewhere import OfficeWhereProvider
-from .schemas import EvidenceRecord, evidence_from_item
+from .schemas import EvidenceRecord, evidence_from_item, utc_now
 from .wiki import apply_wiki_draft, create_wiki_draft, lint_wiki
 from .verify import run_verify
 from .entities import extract_entities, list_entities, list_relationships
@@ -27,6 +27,8 @@ from .recall import create_bundle, list_bundles, show_bundle
 from .backup import create_backup, restore_backup
 from .status import project_status
 from .provider_matrix import provider_matrix
+from .context_pack import build_context_pack, render_markdown
+from .local_capture import capture_git, capture_omx
 
 
 def emit(data: Any, as_json: bool = False) -> None:
@@ -96,6 +98,25 @@ def outcome_from_provider_result(result: ProviderResult, kind: str) -> IngestOut
     )
 
 
+def repo_scope(root: str | Path) -> str:
+    return f"repo:{Path(root).resolve().name}"
+
+
+def repo_tenant(root: str | Path) -> str:
+    digest = hashlib.sha1(str(Path(root).resolve()).encode("utf-8")).hexdigest()[:8]
+    return f"{repo_scope(root)}:{digest}"
+
+
+def stamp_routing(records: list[EvidenceRecord], root: str | Path, provider: str) -> list[EvidenceRecord]:
+    for record in records:
+        record.metadata.setdefault("tenant", repo_tenant(root))
+        record.metadata.setdefault("scope", repo_scope(root))
+        record.metadata.setdefault("source_kind", record.metadata.get("source_kind") or provider)
+        record.metadata.setdefault("source_locator", f"{record.provider}:{record.kind}:{record.source_ref}")
+        record.metadata.setdefault("observed_at", record.occurred_at or utc_now())
+    return records
+
+
 
 def _safe_file_hint(value: Any) -> str | None:
     if not isinstance(value, str):
@@ -162,7 +183,7 @@ def provider_records(args: argparse.Namespace) -> IngestOutcome:
                         records.extend(mail_file_link_records(item, args.kind or "item"))
             except (OSError, json.JSONDecodeError):
                 pass
-        return IngestOutcome(provider=args.provider, records=records, details={"fixture": str(args.fixture)})
+        return IngestOutcome(provider=args.provider, records=stamp_routing(records, args.root, args.provider), details={"fixture": str(args.fixture)})
     if args.provider == "mailwhere":
         provider = MailWhereProvider(command=args.mailwhere_command, db=args.mailwhere_db)
         records = []
@@ -185,10 +206,24 @@ def provider_records(args: argparse.Namespace) -> IngestOutcome:
                 unavailable={"provider": "mailwhere", "reason": "all_sources_unavailable", "results": unavailable, "ok": False, "status": "unavailable", "safe_to_continue": True},
                 details=details,
             )
-        return IngestOutcome(provider="mailwhere", records=records, details=details)
+        return IngestOutcome(provider="mailwhere", records=stamp_routing(records, args.root, "mailwhere"), details=details)
     if args.provider == "officewhere":
         provider = OfficeWhereProvider(base_url=args.officewhere_base_url)
-        return outcome_from_provider_result(provider.search(args.query or "", limit=args.limit), "document")
+        health = provider.health()
+        if args.officewhere_base_url and not health.ok:
+            return outcome_from_provider_result(health, "document")
+        if not (args.query or "").strip():
+            return IngestOutcome(
+                provider="officewhere",
+                status="unavailable",
+                unavailable={"provider": "officewhere", "reason": "query_required", "status": "unavailable", "safe_to_continue": True},
+                details={"query_required": True},
+            )
+        if not health.ok:
+            return outcome_from_provider_result(health, "document")
+        outcome = outcome_from_provider_result(provider.search(args.query or "", limit=args.limit), "document")
+        outcome.records = stamp_routing(outcome.records, args.root, "officewhere")
+        return outcome
     raise SystemExit(f"unsupported provider: {args.provider}")
 
 
@@ -370,8 +405,55 @@ def cmd_capture_session(args: argparse.Namespace) -> int:
     ensure_dirs(paths)
     init_db(paths.db_path)
     record = capture_session_file(Path(args.file)) if args.file else capture_session_text(sys.stdin.read(), "stdin")
+    stamp_routing([record], paths.root, "agent-session")
     ids = insert_evidence(paths.db_path, [record])
     emit({"ok": True, "evidence_ids": ids}, args.json)
+    return 0
+
+
+def cmd_capture_local(args: argparse.Namespace) -> int:
+    paths = resolve_paths(args.root)
+    ensure_dirs(paths)
+    init_db(paths.db_path)
+    records: list[EvidenceRecord] = []
+    use_git = args.git or not args.omx
+    use_omx = args.omx or not args.git
+    if use_omx:
+        records.extend(capture_omx(paths.root, limit=args.limit))
+    if use_git:
+        records.extend(capture_git(paths.root, limit=args.limit))
+    stamp_routing(records, paths.root, "local")
+    ids = insert_evidence(paths.db_path, records)
+    git_failed = any(record.provider == "git" and record.kind == "unavailable" for record in records)
+    status = "unavailable" if git_failed and use_git else "ok"
+    log_ingest(paths.db_path, "local", "capture-local", status, {"inserted": len(ids), "git": use_git, "omx": use_omx})
+    emit({"ok": status == "ok", "status": status, "inserted": len(ids), "evidence_ids": ids}, args.json)
+    return 0 if status == "ok" else 2
+
+
+def cmd_context(args: argparse.Namespace) -> int:
+    if args.context_command != "pack":
+        raise SystemExit(f"unsupported context command: {args.context_command}")
+    paths = resolve_paths(args.root)
+    if not paths.db_path.exists():
+        emit({"ok": False, "error": "contextWhere database not initialized"}, args.json)
+        return 2
+    pack = build_context_pack(
+        paths.db_path,
+        task=args.task or args.query or "current task",
+        query=args.query or "",
+        tenant=args.tenant,
+        scope=args.scope if args.scope or args.all_scopes else repo_scope(paths.root),
+        source_kinds=[part.strip() for part in (args.source_kinds or "").split(",") if part.strip()],
+        max_items=args.max_items,
+        sensitivity_ceiling=args.sensitivity_ceiling,
+        include_stale=args.include_stale,
+        include_history=args.include_history,
+    )
+    if args.format == "markdown":
+        emit(render_markdown(pack), False)
+    else:
+        emit(pack, True)
     return 0
 
 
@@ -557,6 +639,31 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(p)
     p.add_argument("--file")
     p.set_defaults(func=cmd_capture_session)
+
+    p = sub.add_parser("capture-local")
+    add_common(p)
+    p.add_argument("--git", action="store_true", help="Capture read-only git status/log evidence")
+    p.add_argument("--omx", action="store_true", help="Capture repo-local .omx plan/context files as agent-session evidence")
+    p.add_argument("--limit", type=int, default=20)
+    p.set_defaults(func=cmd_capture_local)
+
+    context = sub.add_parser("context")
+    add_common(context)
+    context_sub = context.add_subparsers(dest="context_command", required=True)
+    p = context_sub.add_parser("pack")
+    add_common(p)
+    p.add_argument("--query", default="")
+    p.add_argument("--task", default="")
+    p.add_argument("--tenant")
+    p.add_argument("--scope")
+    p.add_argument("--all-scopes", action="store_true", help="Do not default to the current repo scope")
+    p.add_argument("--source-kinds", default="")
+    p.add_argument("--max-items", type=int, default=20)
+    p.add_argument("--sensitivity-ceiling", choices=["public", "internal", "confidential", "secret-like"], default="internal")
+    p.add_argument("--include-stale", action="store_true")
+    p.add_argument("--include-history", action="store_true")
+    p.add_argument("--format", choices=["json", "markdown"], default="json")
+    p.set_defaults(func=cmd_context)
 
     p = sub.add_parser("verify")
     p.add_argument("--json", action="store_true")

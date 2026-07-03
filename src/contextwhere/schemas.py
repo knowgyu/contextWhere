@@ -17,6 +17,50 @@ SENSITIVE_KEYS = {
     "source_path",
 }
 
+SENSITIVITY_ALIASES = {
+    "public": "public",
+    "internal": "internal",
+    "confidential": "confidential",
+    "restricted": "secret-like",
+    "secret": "secret-like",
+    "secret-like": "secret-like",
+}
+
+
+def normalize_sensitivity(value: Any) -> str:
+    if not isinstance(value, str):
+        return "internal"
+    return SENSITIVITY_ALIASES.get(value.strip().lower(), "secret-like")
+
+
+ROUTING_KEYS = {
+    "tenant",
+    "scope",
+    "source_kind",
+    "source_locator",
+    "observed_at",
+    "valid_from",
+    "valid_until",
+    "stale_after",
+    "supersedes",
+    "superseded_by",
+}
+
+
+def routing_metadata(data: dict[str, Any], provider: str, default_kind: str) -> dict[str, Any]:
+    metadata: dict[str, Any] = {}
+    for key in ROUTING_KEYS:
+        value = data.get(key)
+        if value not in (None, ""):
+            metadata[key] = value
+    metadata.setdefault("source_kind", str(data.get("source_kind") or provider))
+    if "source_locator" not in metadata:
+        source_ref = data.get("source_id") or data.get("id") or data.get("file_id") or data.get("task_id")
+        if source_ref:
+            metadata["source_locator"] = f"{provider}:{data.get('kind') or default_kind}:{source_ref}"
+    return metadata
+
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -95,7 +139,8 @@ def evidence_from_item(provider: str, item: dict[str, Any], default_kind: str = 
     snippet = str(clean.get("evidence_snippet") or clean.get("snippet") or clean.get("reason") or "")
     occurred_at = clean.get("received_at") or clean.get("source_received_at") or clean.get("modified_at") or clean.get("due_at")
     provenance = str(clean.get("provenance") or provider)
-    metadata = {k: v for k, v in clean.items() if k not in {"kind", "source_id", "id", "file_id", "task_id", "title", "subject", "name", "evidence_snippet", "snippet", "reason", "received_at", "source_received_at", "modified_at", "due_at", "provenance"}}
+    metadata = {k: v for k, v in clean.items() if k not in {"kind", "source_id", "id", "file_id", "task_id", "title", "subject", "name", "evidence_snippet", "snippet", "reason", "received_at", "source_received_at", "modified_at", "due_at", "provenance", "sensitivity", "confidence"}}
+    metadata.update(routing_metadata(clean, provider, kind))
     return EvidenceRecord(
         provider=provider,
         source_ref=source_ref,
@@ -103,7 +148,9 @@ def evidence_from_item(provider: str, item: dict[str, Any], default_kind: str = 
         title=title,
         snippet=snippet,
         occurred_at=str(occurred_at) if occurred_at else None,
+        sensitivity=normalize_sensitivity(clean.get("sensitivity") or "internal"),
         provenance=provenance,
+        confidence=str(clean.get("confidence") or "medium"),
         metadata=metadata,
         omitted_fields=omitted,
     )

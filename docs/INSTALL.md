@@ -1,6 +1,6 @@
 # contextWhere install and quick start
 
-contextWhere 0.10.0 is a local-first Python/SQLite CLI. Provider ingest is read-only; wiki writes happen only through audited `wiki apply` drafts.
+contextWhere 0.11.0 is a local-first Python/SQLite CLI and workspace context OS slice. Provider ingest is read-only; wiki writes happen only through audited `wiki apply` drafts.
 
 ## Requirements
 

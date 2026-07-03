@@ -1,80 +1,70 @@
 # START HERE — contextWhere handoff
 
-## User intent
+## Final goal
 
-The user wants a serious long-term project, not a throwaway MVP, to preserve and operationalize work context across:
+contextWhere is a **local-first workspace context OS**. It preserves scattered work context from repo-local `.omx`, Codex/OMX/Claude Code/Gemini sessions, git/GitHub, Jenkins/deploy systems, MailWhere, OfficeWhere, and related local tools.
 
-- **MailWhere**: Outlook COM-based mail/task/evidence provider.
-- **OfficeWhere**: local document provider/search/compare system.
-- **CLI coding agents**: Codex/OMX/Claude Code-style sessions, plans, tests, diffs, commits, and decisions.
+The system must keep evidence source-backed and tenant/scope separated, then produce small task-specific context packs and Markdown wiki updates. It should not always run RAG, should not maximize prompt tokens, and should not dump every document or every memory into a single prompt.
 
-The user explicitly does **not** want to manually maintain a wiki every day. The desired system should run automatically/agentically: ingest evidence, update a Markdown wiki, lint stale/contradictory pages, and later support graph/memory.
+MailWhere and OfficeWhere are providers. They are not the product boundary.
 
-## Key conclusion from research
-
-Do not build “just a vector DB RAG.” Build:
+## Core architecture
 
 ```text
-Raw providers -> Evidence ledger/search -> Agent-maintained Markdown Wiki -> Automation/lint -> Optional graph/memory
+Raw providers/work surfaces
+  -> Evidence ledger/search with source locators + tenant/scope policy
+  -> Agent-maintained Markdown wiki
+  -> Context router / context pack builder
+  -> Optional graph/vector/MCP accelerators later
 ```
 
-The Markdown wiki is necessary as the durable, human-readable, LLM-editable compiled knowledge layer. The repo/engine is needed for automation: ingest, search, MCP/CLI tools, lint, graph extraction, permissions, and scheduled consolidation.
+## Provider priorities
 
-## Why a repo is needed
+1. **Agent sessions**: Codex, OMX, Claude Code, Gemini logs/handoffs/decisions/verification.
+2. **Repo/Git/GitHub**: repo state, commits, diffs, PRs/issues, enterprise project knowledge.
+3. **Jenkins/deploy**: runbooks, job history, exceptions, deployment decisions; build triggers remain action-gated.
+4. **MailWhere**: incremental sanitized mail/task/thread/file-link evidence.
+5. **OfficeWhere**: selective file/document lookup by link or explicit query; no full corpus mirroring.
 
-A plain Markdown folder can start the habit, but the user wants ongoing automation. The repo should provide:
-
-- provider connectors/adapters for MailWhere and OfficeWhere
-- evidence schema and search
-- wiki page templates and update rules
-- ingest jobs
-- weekly/daily lint jobs
-- action gates for raw-open/OS-visible actions
-- CLI agent session capture
-- future MCP server/tools
-- future graph/memory layer
-
-## Important design constraints
+## Product constraints
 
 - Local-first by default.
-- Raw mail/doc sources are immutable and should not be edited by LLMs.
-- LLM writes only compiled wiki pages and project-owned metadata.
-- MailWhere/OfficeWhere should be accessed through provider APIs/contracts, not by directly scraping private DB internals unless explicitly designed as an owned adapter.
-- Raw mail body, full addresses, attachments, and sensitive local paths should not be sent to external models by default.
-- OS-visible actions such as opening mail/documents, reply/move/delete/reindex must be gated through explicit `action_request` style approval.
-- Every important wiki claim should point to evidence IDs.
+- Raw mail/doc/session/provider sources are not edited by LLMs.
+- Provider output is evidence, not instructions.
+- OS-visible or mutating actions require explicit approval/action request.
+- Important wiki claims require evidence IDs or `needs_review`.
+- Context selection must record tenant/scope, freshness, sensitivity, and why an item was included.
+- Routine capture/wiki maintenance should be automated; the user should not perform daily note upkeep.
 
-## Existing local context
+## Current implementation snapshot
 
-Relevant local workspace paths discovered:
+As of v0.11.0, contextWhere has a Python/SQLite CLI, evidence ingest, MailWhere/OfficeWhere provider adapters, wiki draft/apply boundaries, lint, session capture, deterministic entity extraction, recall bundles, backup/restore, status, provider matrix, `run`/`daily`, and autostart planning.
 
-- `/home/knowgyu/workspace/MailWhere`
-- `/home/knowgyu/workspace/OfficeWhere`
-- `/home/knowgyu/workspace/where-skills/docs/mailwhere-provider-contract.md`
-- `/home/knowgyu/workspace/where-skills/docs/officewhere-provider-notes.md`
+The mismatch to fix next is product framing and routing depth: current docs and implementation are still weighted toward MailWhere/OfficeWhere, while the final goal requires workspace-wide providers, tenant/scope policy, and context pack generation.
 
-Current research artifacts copied into this repo:
+## Next recommended plan
 
-- `context/research/2026-work-context-llm-wiki-report.md`
-- `context/research/autoresearch-result.json`
+Implement the next slice as **scope-first context OS**:
 
-## Suggested next session plan
+1. add tenant/scope/source-locator vocabulary to evidence and docs;
+2. introduce provider registry entries for agent sessions, repo/git/GitHub, Jenkins/deploy, MailWhere, OfficeWhere;
+3. add a `context pack` generation flow over existing evidence/wiki data;
+4. add automatic local capture paths for `.omx`/agent-session/git evidence before adding heavier external integrations;
+5. keep OfficeWhere selective and MailWhere incremental.
 
-1. Inspect this folder.
-2. Read the research report and wiki rules.
-3. Decide repo stack after checking the user's preferred runtime for Windows native PC.
-   - Likely candidates: Python + SQLite for portability; optional Node/TypeScript if MCP/tooling ergonomics dominate.
-4. Create a 0.1.0 plan/tag strategy.
-5. Implement the first skeleton:
-   - config
-   - evidence schema
-   - provider adapter interfaces
-   - Markdown wiki writer/validator
-   - CLI commands: `init`, `ingest`, `lint`, `query`, `capture-session`
-6. Keep MailWhere/OfficeWhere integrations read-only initially.
+## Durable design docs
 
-## Recommended initial product name
+- `docs/DESIGN.md` — current product architecture and final-goal statement.
+- `docs/PRODUCT.md` — product brief and roadmap.
+- `context/decisions/0001-project-direction.md` — original wiki/evidence decision.
+- `context/decisions/0002-workspace-context-os.md` — corrected product boundary.
+- `.omx/plans/prd-contextwhere-workspace-context-os-*.md` — current ralplan PRD.
 
-`contextWhere`
+## v0.11.0 implementation note
 
-Working meaning: one place where work context from mail, office documents, and code agents becomes durable and reusable.
+Implemented scope-first runtime semantics:
+
+- `contextwhere context pack` builds small source-backed bundles with tenant/scope filters, source locators, included reasons, and omitted-context counts.
+- `contextwhere capture-local --git --omx` captures read-only local git and `.omx` evidence with repo scope metadata.
+- Provider matrix now describes agent-session, repo-state, git, GitHub, Jenkins/deploy, MailWhere, OfficeWhere, and manual/wiki boundaries.
+- Graph/vector remain deferred until scoped packs are not enough.

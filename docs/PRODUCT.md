@@ -2,107 +2,77 @@
 
 ## Positioning
 
-contextWhere turns mail, office documents, and coding-agent sessions into a local-first evidence ledger plus an LLM-maintained Markdown work wiki.
+contextWhere is a local-first workspace context OS for agents. It turns scattered work surfaces into source-backed evidence, maintains a Markdown work wiki, and builds small context packs for the current task.
 
-It is not a generic vector database. It separates raw providers, sanitized evidence, compiled wiki knowledge, and future graph/memory layers so work context can be governed, audited, and reused.
-
-## 0.1.0 value proposition
-
-- Safe read-only provider ingest foundation for MailWhere and OfficeWhere.
-- SQLite/FTS evidence ledger with provider/source/provenance metadata.
-- Agent-safe wiki drafting and audited deterministic apply boundaries.
-- CLI session capture for Codex/OMX-style work continuity.
-- Lint rules that keep the wiki source-backed and lifecycle-aware.
+It is not a generic vector database, not a MailWhere/OfficeWhere-only app, and not a prompt-token maximizer.
 
 ## Primary users
 
-- A solo operator or small technical team that works across Outlook mail, local Office documents, and CLI coding agents.
-- Users who want accumulated context without manually maintaining a daily wiki.
+- A developer/operator working across many repos, `.omx` folders, agent sessions, mail, documents, GitHub, and deployment systems.
+- Agents that need the user's actual work context instead of generic advice.
+- Small technical workflows that need local-first evidence, auditability, and selective retrieval.
 
-## Safety promise
+## Product promises
 
-- No automatic raw mail/document mutation.
-- No automatic OS-visible open/reply/delete/reindex actions.
-- No provider text is trusted as an instruction.
-- Sensitive/raw fields are omitted by default and omissions are auditable.
-- Wiki writes are deliberate, constrained, and reversible through audit logs.
+- **Workspace-wide**: repo `.omx`, Codex/OMX/Claude/Gemini sessions, git/GitHub, Jenkins/deploy, mail, and documents are all valid providers.
+- **Scoped**: tenant/scope/sensitivity/freshness decide what is eligible for a task.
+- **Evidence-backed**: wiki claims and context packs point back to source locators/evidence IDs.
+- **Automation-first**: capture, draft, lint, and pack generation should run with minimal user babysitting.
+- **Action-safe**: opening mail/docs, replying, moving, deleting, reindexing, or triggering deploys requires explicit approval.
 
-## 0.1.1 operational foundation
+## Current foundation through v0.11.0
 
-- Korean README aligned to the final-goal handoff context.
-- `contextwhere verify --json` install-time smoke command.
-- Cron/systemd schedule examples for Ubuntu-style operations.
+- Python/SQLite CLI with local evidence ledger.
+- MailWhere/OfficeWhere read-only adapters and provider matrix.
+- Sanitized evidence ingest with omitted-field policy.
+- Wiki draft/apply safety boundary and lint.
+- CLI agent session capture.
+- Deterministic entity/relationship seed extraction.
+- Recall bundles, backup/restore, status, `run`/`daily`, and autostart planning.
+- MailWhere file-link evidence and selective OfficeWhere policy.
 
-## 0.2.0 graph seed
+## Corrected roadmap
 
-- Evidence rows에서 deterministic entity candidate를 추출한다.
-- `entities`, `evidence_entities`, `relationships` SQLite tables를 생성한다.
-- `entities extract/list/relationships` CLI로 wiki/agent가 관계 seed를 조회할 수 있다.
+### 0.11.x — workspace context OS semantics
 
-## 0.3.0 agent tool gateway
+- Add tenant/scope/source-locator vocabulary to evidence and generated artifacts.
+- Add provider registry entries for agent sessions, repo/git/GitHub, Jenkins/deploy, MailWhere, and OfficeWhere.
+- Add context pack generation as the main runtime output.
+- Update docs/install flow so the product feels plugin-like after first approval.
 
-- `tools manifest`로 agent가 호출 가능한 tool 목록과 input schema를 확인한다.
-- `tools call`로 query/capture/entities 기능을 JSON object 입력으로 호출한다.
-- 정식 MCP/장기 실행 server 이전의 안정적인 CLI tool gateway로 사용한다.
+### 0.12.x — automatic local capture
 
-## 0.4.0 local recall bundles
+- Capture `.omx` plans/logs/state and Codex/OMX session summaries from local files.
+- Add import surfaces for Claude Code and Gemini logs where locally available.
+- Add git commit/branch/tag/diff evidence capture.
+- Keep raw prompts and sensitive local paths redacted by default.
 
-- 반복 query 결과를 `recall_bundles` table에 저장한다.
-- bundle은 evidence id 목록, query, search mode, limit을 보존한다.
-- 외부 embedding/API 없이 local-first recall 단위를 만든다.
+### 0.13.x — external work-system providers
 
-## 0.5.0 audited backup/restore
+- Add GitHub issue/PR/release evidence through explicit auth/config.
+- Add Jenkins/deploy runbook/job evidence through read-only provider contracts.
+- Keep build/deploy triggers action-gated.
 
-- `backup create` packages `work_wiki/` and `.contextwhere/` with a manifest.
-- `backup restore` validates archive member paths and restores only into an empty or absent root.
-- Backup/restore keeps the local-first product deployable without requiring a hosted service.
+### 1.0 — stable local-first context platform
 
-## 0.6.0 operational status
+- Stable provider contract and migration policy.
+- Context pack CLI/tool/MCP surface.
+- Markdown wiki governance and lint gates.
+- Backup/restore and audit completeness.
+- Optional graph/vector acceleration only where it improves real routing quality.
 
-- `status` gives operators and agents a read-only deployability summary.
-- It reports DB/wiki presence, latest ingest, counts, backup count, and lint health.
-- The command is safe for missing roots and does not initialize or mutate state.
+## Provider-specific policy
 
-## 0.7.0 provider compatibility matrix
+- **MailWhere**: incremental polling is appropriate; keep sanitized mail/task/thread summaries, decisions, and file hints.
+- **OfficeWhere**: do not mirror all documents; use explicit query, mail-linked file hints, snippets, metadata, and source locators.
+- **Agent sessions**: first-class; summarize decisions, constraints, changed files, verification, and follow-ups.
+- **Git/GitHub/Jenkins**: first-class; use read-only evidence by default, require approval for mutating actions.
 
-- `providers matrix` exposes provider contracts as CLI-readable JSON.
-- MailWhere and OfficeWhere list live requirements, ingest kinds, and safety boundaries.
-- The matrix is static/read-only and complements live `providers health`.
+## v0.11.0 implementation note
 
-## 0.8.0 daily runner
+Implemented scope-first runtime semantics:
 
-- `daily` runs init, read-only provider ingest, entity extraction, wiki draft, lint, and status in one command.
-- Provider unavailable states are safe structured results, not destructive failures.
-- Wiki drafts are created but not applied automatically.
-
-## 0.9.0 autostart installer
-
-- `autostart plan` shows the OS scheduler integration without mutating user state.
-- `autostart install` asks Y/N before installing a user-level systemd timer or Windows scheduled task.
-- The scheduled job runs `daily`; no custom long-running daemon is owned by contextWhere.
-
-## 0.9.1 OfficeWhere daily policy
-
-- Daily runs do not search OfficeWhere by default.
-- OfficeWhere search requires explicit `--officewhere-query`.
-- The intended next step is MailWhere-to-OfficeWhere file-link evidence, not full document mirroring.
-
-## 0.10.0 file-link evidence
-
-- MailWhere attachment/file hints create `file_link` evidence records.
-- `run` is added as the product-facing alias for scheduled polling; `daily` remains as a compatibility alias.
-- OfficeWhere remains opt-in and should be queried from mail-derived file/project hints, not broad document sweeps.
-
-## Roadmap
-
-1. 0.1.x: strengthen provider compatibility, add scheduled ingest examples, broaden wiki operations with the same typed/audited model.
-2. 0.2.0: deterministic entity extraction and relationship seed. 0.2.x: richer people/projects/decisions/tasks extraction and promotion workflows.
-3. 0.3.0: JSON CLI tool gateway. 0.3.x: MCP server and long-running agent tool surfaces.
-4. 0.4.0: local recall bundles. 0.4.x: selective local embedding/vector layer for ambiguous recall.
-5. 0.5.0: audited backup/restore foundation.
-6. 0.6.0: operational status command.
-7. 0.7.0: provider compatibility matrix.
-8. 0.8.0: unattended daily runner.
-9. 0.9.0: user-level autostart installer.
-10. 0.10.0: MailWhere file-link evidence and run alias. 0.10.x: link lookup refinement, migration command, selective local recall.
-11. 1.0: stable local-first context platform with documented provider contracts, release artifacts, and migration policy.
+- `contextwhere context pack` builds small source-backed bundles with tenant/scope filters, source locators, included reasons, and omitted-context counts.
+- `contextwhere capture-local --git --omx` captures read-only local git and `.omx` evidence with repo scope metadata.
+- Provider matrix now describes agent-session, repo-state, git, GitHub, Jenkins/deploy, MailWhere, OfficeWhere, and manual/wiki boundaries.
+- Graph/vector remain deferred until scoped packs are not enough.

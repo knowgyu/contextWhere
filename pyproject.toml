@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "contextwhere"
-version = "0.10.0"
-description = "Local-first evidence ledger and work-wiki automation for MailWhere, OfficeWhere, and CLI agent context."
+version = "0.11.0"
+description = "Local-first workspace context OS with scoped evidence, work-wiki automation, and context packs."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "Proprietary"}

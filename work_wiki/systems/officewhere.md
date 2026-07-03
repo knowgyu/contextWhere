@@ -2,26 +2,30 @@
 type: system
 status: active
 sensitivity: confidential
-source_count: 1
+source_count: 2
 evidence_ids:
   - local:where-skills/docs/officewhere-provider-notes.md
-last_verified: 2026-07-02
-stale_after: 2026-08-02
-confidence: medium
+  - decision:0002-workspace-context-os
+last_verified: 2026-07-03
+stale_after: 2026-08-03
+confidence: high
 related:
   - ../projects/contextwhere.md
 ---
 
 # OfficeWhere
 
-OfficeWhere is expected to act as a read-oriented local document provider for search, files, duplicates, groups, and compare.
+OfficeWhere is a read-oriented local document provider for search, files, duplicates, groups, and compare operations.
 
 ## Desired role in contextWhere
 
-- Provide document evidence: file IDs, titles, snippets, timestamps, duplicate/version grouping, and compare results.
-- Keep local paths and snippets sensitive.
-- Avoid automatic open/show/reindex/rescan/delete operations.
+OfficeWhere should provide selective document evidence:
+
+- explicit user/task query results;
+- mail-derived file-link lookup;
+- metadata/snippets/compare results;
+- source locators for later user-approved opening or deeper inspection.
 
 ## Integration stance
 
-Use provider APIs where possible. Treat document paths and snippets as local sensitive data.
+Do not mirror the full document corpus into contextWhere. Do not store raw document bodies or sensitive full local paths by default. Do not run open/show/reindex/rescan/delete automatically.

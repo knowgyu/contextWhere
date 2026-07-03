@@ -2,18 +2,20 @@ from __future__ import annotations
 
 import json
 import tempfile
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable
 
-from .config import resolve_paths
-from .db import init_db, insert_evidence, query_evidence_with_mode
-from .schemas import evidence_from_item
-from .wiki import apply_wiki_draft, create_wiki_draft, lint_wiki
 from .capture import capture_session_text
+from .config import resolve_paths
+from .context_pack import build_context_pack
+from .db import init_db, insert_evidence, query_evidence_with_mode
 from .entities import extract_entities, list_entities
+from .local_capture import capture_omx
 from .recall import create_bundle, list_bundles
+from .schemas import evidence_from_item
 from .status import project_status
+from .wiki import apply_wiki_draft, create_wiki_draft, lint_wiki
 
 
 @dataclass
@@ -29,10 +31,7 @@ class VerifyStep:
 def write_minimal_wiki(root: Path) -> None:
     wiki = root / "work_wiki"
     (wiki / "projects").mkdir(parents=True, exist_ok=True)
-    (wiki / "index.md").write_text(
-        "# contextWhere Wiki Index\n\n## Project docs\n\n- `projects/contextwhere.md` — contextWhere project overview.\n",
-        encoding="utf-8",
-    )
+    (wiki / "index.md").write_text("# contextWhere Wiki Index\n\n## Project docs\n\n- `projects/contextwhere.md` contextWhere project overview.\n", encoding="utf-8")
     (wiki / "log.md").write_text("# contextWhere Wiki Log\n", encoding="utf-8")
     (wiki / "projects" / "contextwhere.md").write_text(
         "---\n"
@@ -48,21 +47,23 @@ def sample_record() -> dict:
         "kind": "task",
         "id": "verify-task-1",
         "title": "Verify contextWhere installation",
-        "reason": "Smoke test should exercise evidence, query, wiki draft/apply, lint, and capture-session.",
+        "reason": "Smoke test exercise evidence, query, wiki draft/apply, lint, capture-session, and context pack.",
         "source_received_at": "2026-07-03T00:00:00+09:00",
         "raw_body": "SECRET RAW BODY SHOULD NOT PERSIST",
         "full_addresses": ["secret@example.com"],
         "prompt_logs": "SECRET PROMPT SHOULD NOT PERSIST",
+        "tenant": "repo:contextwhere-verify",
+        "scope": "repo:contextwhere-verify",
+        "source_kind": "mailwhere",
+        "source_locator": "verify:task:verify-task-1",
     }
 
 
 def run_step(steps: list[VerifyStep], name: str, fn: Callable[[], str]) -> None:
     try:
-        detail = fn()
-    except Exception as exc:  # pragma: no cover - surfaced in CLI output
+        steps.append(VerifyStep(name=name, ok=True, detail=fn()))
+    except Exception as exc:  # pragma: no cover - returned as structured smoke evidence
         steps.append(VerifyStep(name=name, ok=False, detail=f"{type(exc).__name__}: {exc}"))
-    else:
-        steps.append(VerifyStep(name=name, ok=True, detail=detail))
 
 
 def run_verify(root: Path | None = None, keep: bool = False) -> dict:
@@ -92,11 +93,16 @@ def run_verify(root: Path | None = None, keep: bool = False) -> dict:
         return ids[0]
 
     def query_step() -> str:
-        paths = resolve_paths(work_root)
-        rows, mode = query_evidence_with_mode(paths.db_path, "contextWhere", limit=5)
+        rows, mode = query_evidence_with_mode(resolve_paths(work_root).db_path, "contextWhere", limit=5)
         if not rows:
             raise RuntimeError("query returned no rows")
         return mode
+
+    def context_pack_step() -> str:
+        pack = build_context_pack(resolve_paths(work_root).db_path, task="verify contextWhere", query="contextWhere", scope="repo:contextwhere-verify", max_items=5)
+        if not pack["items"] or not pack["manifest"]["included"]:
+            raise RuntimeError("context pack missing included evidence")
+        return pack["manifest"]["pack_id"]
 
     def wiki_step() -> str:
         paths = resolve_paths(work_root)
@@ -108,8 +114,7 @@ def run_verify(root: Path | None = None, keep: bool = False) -> dict:
         return str(audit)
 
     def lint_step() -> str:
-        paths = resolve_paths(work_root)
-        issues = [issue.to_dict() for issue in lint_wiki(paths.wiki_dir)]
+        issues = [issue.to_dict() for issue in lint_wiki(resolve_paths(work_root).wiki_dir)]
         errors = [issue for issue in issues if issue.get("severity") == "error"]
         if errors:
             raise RuntimeError(f"lint errors: {errors}")
@@ -126,17 +131,26 @@ def run_verify(root: Path | None = None, keep: bool = False) -> dict:
     def recall_step() -> str:
         paths = resolve_paths(work_root)
         bundle = create_bundle(paths.db_path, name="verify recall", query="contextWhere", limit=10)
-        bundles = list_bundles(paths.db_path, limit=10)
-        if not bundles:
+        if not list_bundles(paths.db_path, limit=10):
             raise RuntimeError(f"no recall bundles saved: {bundle}")
         return bundle["bundle_id"]
 
     def capture_step() -> str:
         paths = resolve_paths(work_root)
         record = capture_session_text("Goal: verify contextWhere\nVerification: pytest-style smoke\n", "verify:session")
+        record.metadata.update({"tenant": "repo:contextwhere-verify", "scope": "repo:contextwhere-verify", "source_kind": "agent-session", "source_locator": "verify:session"})
         ids = insert_evidence(paths.db_path, [record])
         if not ids:
             raise RuntimeError("capture evidence not inserted")
+        return ids[0]
+
+    def capture_local_step() -> str:
+        (work_root / ".omx" / "plans").mkdir(parents=True, exist_ok=True)
+        (work_root / ".omx" / "plans" / "verify.md").write_text("Goal: verify local capture\n", encoding="utf-8")
+        paths = resolve_paths(work_root)
+        ids = insert_evidence(paths.db_path, capture_omx(work_root, limit=5))
+        if not ids:
+            raise RuntimeError("local .omx capture inserted no evidence")
         return ids[0]
 
     def status_step() -> str:
@@ -150,22 +164,19 @@ def run_verify(root: Path | None = None, keep: bool = False) -> dict:
             ("init", init_step),
             ("ingest", ingest_step),
             ("query", query_step),
+            ("context-pack", context_pack_step),
             ("wiki-draft-apply", wiki_step),
             ("lint", lint_step),
             ("entities-extract", entities_step),
             ("recall-bundle", recall_step),
             ("capture-session", capture_step),
+            ("capture-local", capture_local_step),
             ("status", status_step),
         ]:
             run_step(steps, name, fn)
             if not steps[-1].ok:
                 break
-        return {
-            "ok": all(step.ok for step in steps),
-            "root": str(work_root),
-            "kept": bool(root is not None or keep),
-            "steps": [step.to_dict() for step in steps],
-        }
+        return {"ok": all(step.ok for step in steps), "root": str(work_root), "kept": bool(root is not None or keep), "steps": [step.to_dict() for step in steps]}
     finally:
         if temp_dir is not None:
             temp_dir.cleanup()
