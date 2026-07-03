@@ -7,6 +7,7 @@ import stat
 import zipfile
 from pathlib import Path
 
+from contextwhere import __version__
 from contextwhere.cli import main
 from contextwhere.config import resolve_paths
 from contextwhere.db import connect
@@ -627,7 +628,7 @@ def test_status_reports_operational_counts(tmp_path, capsys):
     assert run_cli(["status", "--root", str(tmp_path), "--json"]) == 0
     result = json.loads(capsys.readouterr().out)
     assert result["ok"] is True
-    assert result["version"] == "0.7.0"
+    assert result["version"] == __version__
     assert result["counts"]["evidence"] >= 1
     assert result["counts"]["entities"] >= 1
     assert result["counts"]["recall_bundles"] == 1

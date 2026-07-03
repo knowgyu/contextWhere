@@ -1,6 +1,6 @@
 # contextWhere install and quick start
 
-contextWhere 0.7.0 is a local-first Python/SQLite CLI. It is safe to run on a workstation or server because provider ingest is read-only and wiki writes happen only through audited `wiki apply` drafts.
+contextWhere 0.7.1 is a local-first Python/SQLite CLI. It is safe to run on a workstation or server because provider ingest is read-only and wiki writes happen only through audited `wiki apply` drafts.
 
 ## Requirements
 
@@ -66,7 +66,7 @@ contextwhere ingest \
 
 Non-loopback OfficeWhere URLs are rejected as `unsafe_url`. Live ingest returns exit code 2 with `ok:false`, `status:"unavailable"`, and provider details when a live provider is missing or unsafe; fixture ingest remains a local test path.
 
-## Backup and restore smoke
+## Backup restore smoke
 
 Create a local backup after ingest/wiki updates:
 
