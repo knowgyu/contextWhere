@@ -6,7 +6,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
 
 ## 현재 릴리즈
 
-- 최신 로컬 버전: **0.5.0**
+- 최신 로컬 버전: **0.6.0**
 - 공개 원격 저장소: <https://github.com/knowgyu/contextWhere>
 - 기본 브랜치: `main`
 - 기준 태그:
@@ -16,6 +16,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
   - `v0.3.0`: agent JSON tool gateway
   - `v0.4.0`: local recall bundles
   - `v0.5.0`: audited local backup and restore foundation
+  - `v0.6.0`: operational status command and deployability check
 
 ## 왜 만드는가
 
@@ -49,6 +50,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
 - `tools manifest/call`: 외부 agent가 안전한 JSON tool gateway로 query/capture/entities/recall 기능 호출.
 - `recall create/list/show`: evidence query 결과를 재현 가능한 local recall bundle로 저장.
 - `backup create/restore`: `work_wiki`와 `.contextwhere`를 manifest가 포함된 zip으로 백업하고 빈 target에만 복원.
+- `status`: DB/wiki/ingest/entity/recall/backup/lint 상태를 read-only JSON으로 점검.
 - Ubuntu cron/systemd 운영 예제.
 
 ## 빠른 시작
@@ -67,6 +69,7 @@ CLI 확인:
 ```bash
 contextwhere --help
 contextwhere init --json
+contextwhere status --json
 contextwhere providers health --all --json
 ```
 
@@ -85,6 +88,7 @@ contextwhere tools call query_evidence --input-json '{"query":"contextWhere"}' -
 contextwhere recall create --name "contextWhere focus" --query contextWhere --json
 contextwhere recall list --json
 contextwhere backup create --output .contextwhere/backups/contextwhere-$(date +%Y%m%d).zip --json
+contextwhere status --json
 ```
 
 ## 운영 흐름
@@ -105,6 +109,7 @@ contextwhere tools call query_evidence --input-json '{"query":"contextWhere"}' -
 contextwhere recall create --name "contextWhere focus" --query contextWhere --json
 contextwhere recall list --json
 contextwhere backup create --output .contextwhere/backups/contextwhere-$(date +%Y%m%d).zip --json
+contextwhere status --json
 ```
 
 복원은 덮어쓰기를 방지하기 위해 비어 있거나 존재하지 않는 target root에만 수행한다.
@@ -142,7 +147,8 @@ contextwhere backup restore .contextwhere/backups/contextwhere-20260703.zip /tmp
 - **0.3.x 이후**: MCP 호환 서버와 장기 실행 tool server로 확장.
 - **0.4.0**: 재현 가능한 local recall bundle.
 - **0.5.0**: 감사 가능한 local backup/restore foundation.
-- **0.5.x 이후**: migration/status 명령, provider compatibility matrix, 선택적 local embedding/vector recall.
+- **0.6.0**: 운영 상태 점검용 `status`와 배포 가능성 체크.
+- **0.6.x 이후**: migration command, provider compatibility matrix, 선택적 local embedding/vector recall.
 - **1.0**: 안정 운영 문서와 릴리즈 절차가 포함된 local-first context platform.
 
 ## 개발/검증 명령

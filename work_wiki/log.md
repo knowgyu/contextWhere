@@ -42,3 +42,9 @@ Initialized contextWhere folder from autoresearch discussion. Copied research re
 - Added manifest-based local backup archive for `work_wiki/` and `.contextwhere/`.
 - Restore validates archive members and refuses non-empty targets to avoid overwriting user state.
 - Evidence: `docs/releases/v0.5.0.md`, `src/contextwhere/backup.py`, tests under `tests/`.
+
+## 2026-07-03 — contextWhere 0.6.0 operational status
+
+- Added read-only `contextwhere status --json` for deployability checks.
+- Verify smoke now includes status after capture/recall workflows.
+- Evidence: `docs/releases/v0.6.0.md`, `src/contextwhere/status.py`, tests under `tests/`.

@@ -398,7 +398,7 @@ def test_verify_command_runs_smoke(capsys):
     out = capsys.readouterr().out
     data = json.loads(out)
     assert data["ok"] is True
-    assert [step["name"] for step in data["steps"]] == ["init", "ingest", "query", "wiki-draft-apply", "lint", "entities-extract", "recall-bundle", "capture-session"]
+    assert [step["name"] for step in data["steps"]] == ["init", "ingest", "query", "wiki-draft-apply", "lint", "entities-extract", "recall-bundle", "capture-session", "status"]
 
 
 def test_verify_command_creates_child_under_named_root(tmp_path, capsys):
@@ -614,3 +614,32 @@ def test_backup_restore_rejects_path_traversal_member(tmp_path, capsys):
     assert "unsafe archive member" in result["error"]
     assert not target.exists()
     assert not (tmp_path / "evil.txt").exists()
+
+
+def test_status_reports_operational_counts(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli(["init", "--root", str(tmp_path), "--json"]) == 0
+    assert run_cli(["ingest", "--provider", "mailwhere", "--fixture", str(ROOT_FIXTURES / "mailwhere_tasks.json"), "--root", str(tmp_path), "--json"]) == 0
+    assert run_cli(["entities", "extract", "--root", str(tmp_path), "--json"]) == 0
+    assert run_cli(["recall", "create", "--root", str(tmp_path), "--name", "ctx", "--query", "contextWhere", "--json"]) == 0
+    assert run_cli(["backup", "create", "--root", str(tmp_path), "--output", str(tmp_path / ".contextwhere" / "backups" / "status.zip"), "--json"]) == 0
+    capsys.readouterr()
+    assert run_cli(["status", "--root", str(tmp_path), "--json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is True
+    assert result["version"] == "0.6.0"
+    assert result["counts"]["evidence"] >= 1
+    assert result["counts"]["entities"] >= 1
+    assert result["counts"]["recall_bundles"] == 1
+    assert result["backup_count"] == 1
+    assert result["latest_ingest"]["provider"] == "mailwhere"
+
+
+def test_status_missing_root_is_structured_and_non_mutating(tmp_path, capsys):
+    root = tmp_path / "missing"
+    assert run_cli(["status", "--root", str(root), "--json"]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is False
+    assert result["db_exists"] is False
+    assert result["wiki_exists"] is False
+    assert not root.exists()

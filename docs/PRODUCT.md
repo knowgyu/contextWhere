@@ -57,11 +57,18 @@ It is not a generic vector database. It separates raw providers, sanitized evide
 - `backup restore` validates archive member paths and restores only into an empty or absent root.
 - Backup/restore keeps the local-first product deployable without requiring a hosted service.
 
+## 0.6.0 operational status
+
+- `status` gives operators and agents a read-only deployability summary.
+- It reports DB/wiki presence, latest ingest, counts, backup count, and lint health.
+- The command is safe for missing roots and does not initialize or mutate state.
+
 ## Roadmap
 
 1. 0.1.x: strengthen provider compatibility, add scheduled ingest examples, broaden wiki operations with the same typed/audited model.
 2. 0.2.0: deterministic entity extraction and relationship seed. 0.2.x: richer people/projects/decisions/tasks extraction and promotion workflows.
 3. 0.3.0: JSON CLI tool gateway. 0.3.x: MCP server and long-running agent tool surfaces.
 4. 0.4.0: local recall bundles. 0.4.x: selective local embedding/vector layer for ambiguous recall.
-5. 0.5.0: audited backup/restore foundation. 0.5.x: migration/status commands and provider compatibility matrix.
-6. 1.0: stable local-first context platform with documented provider contracts, release artifacts, and migration policy.
+5. 0.5.0: audited backup/restore foundation.
+6. 0.6.0: operational status command. 0.6.x: migration command and provider compatibility matrix.
+7. 1.0: stable local-first context platform with documented provider contracts, release artifacts, and migration policy.

@@ -54,7 +54,17 @@ contextwhere tools call query_evidence --input-json '{"query":"contextWhere","li
 contextwhere tools call entities_list --input-json '{"limit":20}' --json
 ```
 
-0.5.0 gateway는 JSON object 입력만 허용하며, 등록된 safe tool만 실행한다. Provider mutation이나 OS-visible action은 포함하지 않는다.
+0.6.0 gateway는 JSON object 입력만 허용하며, 등록된 safe tool만 실행한다. Provider mutation이나 OS-visible action은 포함하지 않는다.
+
+## Status checks
+
+Use `status` as a read-only deployability check after install, ingest, wiki apply, recall, or backup work:
+
+```bash
+contextwhere status --json
+```
+
+It reports version, root paths, DB/wiki presence, evidence/entity/relationship/recall counts, latest ingest, backup count, and lint issue counts. It exits 0 only when the DB and wiki exist and lint has no errors.
 
 ## Backup and restore
 

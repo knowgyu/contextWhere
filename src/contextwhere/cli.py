@@ -21,6 +21,7 @@ from .entities import extract_entities, list_entities, list_relationships
 from .tools import call_tool, manifest as tools_manifest, parse_input as parse_tool_input
 from .recall import create_bundle, list_bundles, show_bundle
 from .backup import create_backup, restore_backup
+from .status import project_status
 
 
 def emit(data: Any, as_json: bool = False) -> None:
@@ -162,6 +163,12 @@ def cmd_query(args: argparse.Namespace) -> int:
     rows, mode = query_evidence_with_mode(paths.db_path, args.query, limit=args.limit)
     emit({"ok": True, "search_mode": mode, "items": rows}, args.json)
     return 0
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    result = project_status(args.root)
+    emit(result, args.json)
+    return 0 if result.get("ok") else 2
 
 
 def cmd_lint(args: argparse.Namespace) -> int:
@@ -328,6 +335,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("query")
     p.add_argument("--limit", type=int, default=20)
     p.set_defaults(func=cmd_query)
+
+    p = sub.add_parser("status")
+    add_common(p)
+    p.set_defaults(func=cmd_status)
 
     p = sub.add_parser("lint")
     add_common(p)

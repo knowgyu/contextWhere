@@ -13,6 +13,7 @@ from .wiki import apply_wiki_draft, create_wiki_draft, lint_wiki
 from .capture import capture_session_text
 from .entities import extract_entities, list_entities
 from .recall import create_bundle, list_bundles
+from .status import project_status
 
 
 @dataclass
@@ -138,6 +139,12 @@ def run_verify(root: Path | None = None, keep: bool = False) -> dict:
             raise RuntimeError("capture evidence not inserted")
         return ids[0]
 
+    def status_step() -> str:
+        result = project_status(work_root)
+        if not result.get("ok"):
+            raise RuntimeError(f"status failed: {result}")
+        return str(result["counts"]["evidence"])
+
     try:
         for name, fn in [
             ("init", init_step),
@@ -148,6 +155,7 @@ def run_verify(root: Path | None = None, keep: bool = False) -> dict:
             ("entities-extract", entities_step),
             ("recall-bundle", recall_step),
             ("capture-session", capture_step),
+            ("status", status_step),
         ]:
             run_step(steps, name, fn)
             if not steps[-1].ok:
