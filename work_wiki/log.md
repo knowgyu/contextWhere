@@ -23,3 +23,9 @@ Initialized contextWhere folder from autoresearch discussion. Copied research re
 - `contextwhere entities extract/list/relationships` CLI를 추가했다.
 - `contextwhere verify --json` smoke에 entity extraction 단계를 포함했다.
 - Evidence: `docs/releases/v0.2.0.md`, `src/contextwhere/entities.py`, tests under `tests/`.
+
+## 2026-07-03 — contextWhere 0.3.0 agent tool gateway
+
+- 외부 agent가 사용할 수 있는 `contextwhere tools manifest/call` JSON gateway를 추가했다.
+- Query, capture-session, entity extraction/list/relationship list tool을 등록했다.
+- Evidence: `docs/releases/v0.3.0.md`, `src/contextwhere/tools.py`, tests under `tests/`.

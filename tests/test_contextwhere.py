@@ -446,3 +446,63 @@ def test_verify_command_includes_entity_extraction(capsys):
     data = json.loads(capsys.readouterr().out)
     step_names = [step["name"] for step in data["steps"]]
     assert "entities-extract" in step_names
+
+
+def test_tools_manifest_and_query_call(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli(["init", "--root", str(tmp_path)]) == 0
+    assert run_cli(["ingest", "--provider", "mailwhere", "--fixture", str(ROOT_FIXTURES / "mailwhere_tasks.json"), "--root", str(tmp_path)]) == 0
+    capsys.readouterr()
+    assert run_cli(["tools", "manifest", "--json"]) == 0
+    manifest = json.loads(capsys.readouterr().out)
+    assert manifest["ok"] is True
+    assert "query_evidence" in {tool["name"] for tool in manifest["tools"]}
+    assert run_cli(["tools", "call", "query_evidence", "--root", str(tmp_path), "--input-json", '{"query":"contextWhere"}', "--json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is True
+    assert result["tool"] == "query_evidence"
+    assert result["items"]
+
+
+def test_tools_capture_and_entities_calls(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli(["init", "--root", str(tmp_path)]) == 0
+    capsys.readouterr()
+    assert run_cli(["tools", "call", "capture_session", "--root", str(tmp_path), "--input-json", '{"text":"Goal: contextWhere tool call"}', "--json"]) == 0
+    captured = json.loads(capsys.readouterr().out)
+    assert captured["ok"] is True
+    assert run_cli(["tools", "call", "entities_extract", "--root", str(tmp_path), "--input-json", '{"query":"contextWhere"}', "--json"]) == 0
+    extracted = json.loads(capsys.readouterr().out)
+    assert extracted["ok"] is True
+    assert run_cli(["tools", "call", "entities_list", "--root", str(tmp_path), "--input-json", '{}', "--json"]) == 0
+    listed = json.loads(capsys.readouterr().out)
+    assert listed["ok"] is True
+    assert listed["items"]
+
+
+def test_tools_call_rejects_non_object_input(capsys):
+    assert run_cli(["tools", "call", "query_evidence", "--input-json", '[1,2,3]', "--json"]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is False
+    assert "invalid input" in result["error"]
+
+
+def test_tools_read_only_and_unknown_do_not_initialize_missing_root(tmp_path, capsys):
+    missing = tmp_path / "missing-root"
+    assert run_cli(["tools", "call", "query_evidence", "--root", str(missing), "--input-json", '{"query":"contextWhere"}', "--json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["not_initialized"] is True
+    assert not (missing / ".contextwhere").exists()
+    assert run_cli(["tools", "call", "nope", "--root", str(missing), "--input-json", '{}', "--json"]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is False
+    assert not (missing / ".contextwhere").exists()
+
+
+def test_tools_call_validates_limit_and_required_fields(capsys):
+    assert run_cli(["tools", "call", "query_evidence", "--input-json", '{"query":"x","limit":"many"}', "--json"]) == 2
+    assert "invalid input" in json.loads(capsys.readouterr().out)["error"]
+    assert run_cli(["tools", "call", "query_evidence", "--input-json", '{"query":"x","limit":-1}', "--json"]) == 2
+    assert "limit" in json.loads(capsys.readouterr().out)["error"]
+    assert run_cli(["tools", "call", "query_evidence", "--input-json", '{"limit":1}', "--json"]) == 2
+    assert "query" in json.loads(capsys.readouterr().out)["error"]

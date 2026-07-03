@@ -6,13 +6,14 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
 
 ## 현재 릴리즈
 
-- 최신 로컬 버전: **0.2.0**
+- 최신 로컬 버전: **0.3.0**
 - 공개 원격 저장소: <https://github.com/knowgyu/contextWhere>
 - 기본 브랜치: `main`
 - 기준 태그:
   - `v0.1.0`: safe provider ingest foundation
   - `v0.1.1`: Korean README and operational verification foundation
   - `v0.2.0`: deterministic entity extraction and relationship seed
+  - `v0.3.0`: agent JSON tool gateway
 
 ## 왜 만드는가
 
@@ -43,6 +44,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
 - `lint`: work_wiki frontmatter/evidence/lifecycle 점검.
 - `verify`: 설치 후 자체 smoke 검증.
 - `entities extract/list/relationships`: evidence에서 deterministic entity와 co-occurrence relationship seed 추출.
+- `tools manifest/call`: 외부 agent가 안전한 JSON tool gateway로 query/capture/entities 기능 호출.
 - Ubuntu cron/systemd 운영 예제.
 
 ## 빠른 시작
@@ -74,6 +76,8 @@ contextwhere wiki apply .contextwhere/drafts/wiki/latest.json --json
 contextwhere lint --json
 contextwhere entities extract --json
 contextwhere entities list --json
+contextwhere tools manifest --json
+contextwhere tools call query_evidence --input-json '{"query":"contextWhere"}' --json
 ```
 
 ## 운영 흐름
@@ -89,6 +93,8 @@ contextwhere wiki draft --query "프로젝트나 고객명" --json
 contextwhere lint --json
 contextwhere entities extract --json
 contextwhere entities list --json
+contextwhere tools manifest --json
+contextwhere tools call query_evidence --input-json '{"query":"contextWhere"}' --json
 ```
 
 중요 운영 환경에서는 `wiki apply`를 자동화하기 전에 draft를 확인한다. `wiki apply`는 감사 로그와 rollback 내용을 남기지만, compiled wiki에 들어가는 문장은 장기 지식이 되므로 신중하게 적용한다.
@@ -116,7 +122,8 @@ contextwhere entities list --json
 - **0.1.1**: 한국어 README, 설치 후 `verify`, cron/systemd 운영 예제.
 - **0.2.0**: deterministic entity extraction과 relationship table seed.
 - **0.2.x 이후**: people/projects/decisions/tasks 전용 extractor와 wiki 승격 workflow 강화.
-- **0.3.x**: MCP/tool server로 agent가 contextWhere를 직접 조회·기록.
+- **0.3.0**: agent JSON tool gateway.
+- **0.3.x 이후**: MCP 호환 서버와 장기 실행 tool server로 확장.
 - **0.4.x**: 선택적 local embedding/vector recall.
 - **1.0**: backup/restore, migration policy, provider compatibility matrix, 안정 운영 문서까지 포함한 local-first context platform.
 

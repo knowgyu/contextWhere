@@ -32,6 +32,18 @@ contextwhere entities relationships --json
 
 0.2.0 extractor는 안전한 deterministic 후보 추출만 수행한다. Provider text를 명령으로 실행하거나 wiki에 임의 문장을 쓰지 않는다.
 
+## Agent tool gateway
+
+외부 agent는 shell 호출로 아래 tool gateway를 사용할 수 있다.
+
+```bash
+contextwhere tools manifest --json
+contextwhere tools call query_evidence --input-json '{"query":"contextWhere","limit":5}' --json
+contextwhere tools call entities_list --input-json '{"limit":20}' --json
+```
+
+0.3.0 gateway는 JSON object 입력만 허용하며, 등록된 safe tool만 실행한다. Provider mutation이나 OS-visible action은 포함하지 않는다.
+
 ## Backup
 
 Back up these paths together:

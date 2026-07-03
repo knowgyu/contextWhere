@@ -17,6 +17,7 @@ from .schemas import evidence_from_item
 from .wiki import apply_wiki_draft, create_wiki_draft, lint_wiki
 from .verify import run_verify
 from .entities import extract_entities, list_entities, list_relationships
+from .tools import call_tool, manifest as tools_manifest, parse_input as parse_tool_input
 
 
 def emit(data: Any, as_json: bool = False) -> None:
@@ -223,6 +224,28 @@ def cmd_entities(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_tools(args: argparse.Namespace) -> int:
+    if args.tools_command == "manifest":
+        result = tools_manifest()
+    elif args.tools_command == "call":
+        try:
+            payload = parse_tool_input(args.input_json, args.input_file)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            result = {"ok": False, "tool": args.tool_name, "error": f"invalid input: {type(exc).__name__}"}
+            emit(result, args.json)
+            return 2
+        try:
+            result = call_tool(args.root, args.tool_name, payload)
+        except ValueError as exc:
+            result = {"ok": False, "tool": args.tool_name, "error": f"invalid input: {exc}"}
+            emit(result, args.json)
+            return 2
+    else:
+        raise SystemExit(f"unsupported tools command: {args.tools_command}")
+    emit(result, args.json)
+    return 0 if result.get("ok") else 2
+
+
 def add_common(p: argparse.ArgumentParser) -> None:
     p.add_argument("--json", action="store_true")
     p.add_argument("--root", dest="root_override")
@@ -298,6 +321,19 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(p)
     p.add_argument("--limit", type=int, default=100)
     p.set_defaults(func=cmd_entities)
+
+    tools = sub.add_parser("tools")
+    add_common(tools)
+    tools_sub = tools.add_subparsers(dest="tools_command", required=True)
+    p = tools_sub.add_parser("manifest")
+    add_common(p)
+    p.set_defaults(func=cmd_tools)
+    p = tools_sub.add_parser("call")
+    add_common(p)
+    p.add_argument("tool_name")
+    p.add_argument("--input-json")
+    p.add_argument("--input-file")
+    p.set_defaults(func=cmd_tools)
 
     wiki = sub.add_parser("wiki")
     wiki_sub = wiki.add_subparsers(dest="wiki_command", required=True)

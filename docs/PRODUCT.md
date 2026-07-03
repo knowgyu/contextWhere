@@ -39,10 +39,16 @@ It is not a generic vector database. It separates raw providers, sanitized evide
 - `entities`, `evidence_entities`, `relationships` SQLite tables를 생성한다.
 - `entities extract/list/relationships` CLI로 wiki/agent가 관계 seed를 조회할 수 있다.
 
+## 0.3.0 agent tool gateway
+
+- `tools manifest`로 agent가 호출 가능한 tool 목록과 input schema를 확인한다.
+- `tools call`로 query/capture/entities 기능을 JSON object 입력으로 호출한다.
+- 정식 MCP/장기 실행 server 이전의 안정적인 CLI tool gateway로 사용한다.
+
 ## Roadmap
 
 1. 0.1.x: strengthen provider compatibility, add scheduled ingest examples, broaden wiki operations with the same typed/audited model.
 2. 0.2.0: deterministic entity extraction and relationship seed. 0.2.x: richer people/projects/decisions/tasks extraction and promotion workflows.
-3. 0.3.x: MCP server and agent tool surfaces.
+3. 0.3.0: JSON CLI tool gateway. 0.3.x: MCP server and long-running agent tool surfaces.
 4. 0.4.x: selective local embedding/vector layer for ambiguous recall.
 5. 1.0: stable local-first context platform with documented provider contracts, backup/restore, release artifacts, and migration policy.
