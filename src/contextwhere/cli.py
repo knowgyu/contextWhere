@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import platform
 import shlex
@@ -17,7 +18,7 @@ from .db import init_db, insert_evidence, log_ingest, query_evidence_with_mode
 from .providers.base import ProviderResult, load_fixture_records
 from .providers.mailwhere import MailWhereProvider
 from .providers.officewhere import OfficeWhereProvider
-from .schemas import evidence_from_item
+from .schemas import EvidenceRecord, evidence_from_item
 from .wiki import apply_wiki_draft, create_wiki_draft, lint_wiki
 from .verify import run_verify
 from .entities import extract_entities, list_entities, list_relationships
@@ -95,6 +96,43 @@ def outcome_from_provider_result(result: ProviderResult, kind: str) -> IngestOut
     )
 
 
+
+def _safe_file_hint(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    hint = value.replace("\\", "/").split("/")[-1].strip()
+    return hint if hint and hint not in {".", ".."} else None
+
+
+def mail_file_link_records(item: dict[str, Any], default_kind: str) -> list[EvidenceRecord]:
+    hints: list[str] = []
+    for key in ("attachments", "attachment_names", "file_hints", "linked_files"):
+        value = item.get(key)
+        if isinstance(value, list):
+            hints.extend(h for child in value if (h := _safe_file_hint(child)))
+        elif h := _safe_file_hint(value):
+            hints.append(h)
+    if not hints:
+        return []
+    mail_ref = str(item.get("source_id") or item.get("id") or item.get("task_id") or "unknown")
+    title = str(item.get("title") or item.get("subject") or mail_ref)
+    records: list[EvidenceRecord] = []
+    for hint in sorted(set(hints)):
+        link_ref = hashlib.sha1(f"{mail_ref}:{hint}".encode("utf-8")).hexdigest()[:12]
+        records.append(EvidenceRecord(
+            provider="mailwhere",
+            source_ref=link_ref,
+            kind="file_link",
+            title=f"Mail file link: {hint}",
+            snippet=f"Mail '{title}' references file hint '{hint}'.",
+            occurred_at=str(item.get("received_at") or item.get("source_received_at") or item.get("due_at") or "") or None,
+            provenance="mailwhere_file_link",
+            confidence="medium",
+            metadata={"mail_source_ref": mail_ref, "file_hint": hint, "mail_kind": str(item.get("kind") or default_kind)},
+            omitted_fields=["raw_body", "full_addresses", "attachments", "prompt_logs"],
+        ))
+    return records
+
 def cmd_providers(args: argparse.Namespace) -> int:
     if args.action == "matrix":
         emit(provider_matrix(), args.json)
@@ -115,11 +153,16 @@ def cmd_providers(args: argparse.Namespace) -> int:
 
 def provider_records(args: argparse.Namespace) -> IngestOutcome:
     if args.fixture:
-        return IngestOutcome(
-            provider=args.provider,
-            records=load_fixture_records(args.provider, Path(args.fixture), default_kind=args.kind or "item"),
-            details={"fixture": str(args.fixture)},
-        )
+        records = load_fixture_records(args.provider, Path(args.fixture), default_kind=args.kind or "item")
+        if args.provider == "mailwhere":
+            try:
+                payload = json.loads(Path(args.fixture).read_text(encoding="utf-8"))
+                for item in payload.get("items", []):
+                    if isinstance(item, dict):
+                        records.extend(mail_file_link_records(item, args.kind or "item"))
+            except (OSError, json.JSONDecodeError):
+                pass
+        return IngestOutcome(provider=args.provider, records=records, details={"fixture": str(args.fixture)})
     if args.provider == "mailwhere":
         provider = MailWhereProvider(command=args.mailwhere_command, db=args.mailwhere_db)
         records = []
@@ -128,7 +171,9 @@ def provider_records(args: argparse.Namespace) -> IngestOutcome:
         for result, kind in ((provider.list_tasks(limit=args.limit), "task"), (provider.list_review_candidates(limit=args.limit), "review_candidate")):
             details[kind] = provider_telemetry(result)
             if result.ok:
-                records.extend(evidence_from_item("mailwhere", item, kind) for item in result.items)
+                for item in result.items:
+                    records.append(evidence_from_item("mailwhere", item, kind))
+                    records.extend(mail_file_link_records(item, kind))
             else:
                 unavailable_summary = provider_telemetry(result).get("unavailable")
                 if unavailable_summary:
@@ -209,7 +254,7 @@ def cmd_daily(args: argparse.Namespace) -> int:
 
 
 def autostart_command(root: Path) -> list[str]:
-    return [sys.executable, "-m", "contextwhere", "daily", "--root", str(root), "--json"]
+    return [sys.executable, "-m", "contextwhere", "run", "--root", str(root), "--json"]
 
 
 def autostart_plan(root: Path, interval: str) -> dict[str, Any]:
@@ -471,15 +516,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--officewhere-base-url")
     p.set_defaults(func=cmd_ingest)
 
-    p = sub.add_parser("daily")
-    add_common(p)
-    p.add_argument("--query", default="recent work")
-    p.add_argument("--limit", type=int, default=50)
-    p.add_argument("--mailwhere-command", default="MailWhere.Cli.exe")
-    p.add_argument("--mailwhere-db")
-    p.add_argument("--officewhere-base-url")
-    p.add_argument("--officewhere-query", help="Opt-in OfficeWhere search. Daily skips document search unless this is set.")
-    p.set_defaults(func=cmd_daily)
+    for command_name in ("daily", "run"):
+        p = sub.add_parser(command_name)
+        add_common(p)
+        p.add_argument("--query", default="recent work")
+        p.add_argument("--limit", type=int, default=50)
+        p.add_argument("--mailwhere-command", default="MailWhere.Cli.exe")
+        p.add_argument("--mailwhere-db")
+        p.add_argument("--officewhere-base-url")
+        p.add_argument("--officewhere-query", help="Opt-in OfficeWhere search. Daily skips document search unless this is set.")
+        p.set_defaults(func=cmd_daily)
 
     autostart = sub.add_parser("autostart")
     add_common(autostart)

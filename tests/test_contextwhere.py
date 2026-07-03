@@ -153,6 +153,22 @@ def test_wiki_apply_rejects_forged_and_stale_drafts(tmp_path):
     assert (tmp_path / "work_wiki" / "index.md").read_text() == "# contextWhere Wiki Index\n"
 
 
+
+def test_mailwhere_attachment_creates_file_link_evidence(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli(["init", "--root", str(tmp_path), "--json"]) == 0
+    assert run_cli(["ingest", "--provider", "mailwhere", "--fixture", str(ROOT_FIXTURES / "mailwhere_tasks.json"), "--root", str(tmp_path), "--json"]) == 0
+    paths = resolve_paths(tmp_path)
+    with connect(paths.db_path) as conn:
+        row = conn.execute("select title, snippet, metadata, omitted_fields from evidence where kind='file_link'").fetchone()
+    assert row is not None
+    assert "secret.docx" in row["title"]
+    assert "Prepare contextWhere plan" in row["snippet"]
+    metadata = json.loads(row["metadata"])
+    assert metadata["mail_source_ref"] == "task-1"
+    assert metadata["file_hint"] == "secret.docx"
+    assert "attachments" in set(json.loads(row["omitted_fields"]))
+
 def test_fts_does_not_duplicate_and_returns_rows(tmp_path):
     write_wiki(tmp_path)
     assert run_cli(["init", "--root", str(tmp_path)]) == 0
@@ -162,8 +178,8 @@ def test_fts_does_not_duplicate_and_returns_rows(tmp_path):
     with connect(paths.db_path) as conn:
         fts_count = conn.execute("select count(*) from evidence_fts").fetchone()[0]
         join_count = conn.execute("select count(*) from evidence_fts f join evidence e on e.evidence_id=f.evidence_id where evidence_fts match 'contextWhere'").fetchone()[0]
-    assert fts_count == 1
-    assert join_count == 1
+    assert fts_count == 2
+    assert join_count == 2
 
 
 

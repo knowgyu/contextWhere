@@ -87,6 +87,12 @@ It is not a generic vector database. It separates raw providers, sanitized evide
 - OfficeWhere search requires explicit `--officewhere-query`.
 - The intended next step is MailWhere-to-OfficeWhere file-link evidence, not full document mirroring.
 
+## 0.10.0 file-link evidence
+
+- MailWhere attachment/file hints create `file_link` evidence records.
+- `run` is added as the product-facing alias for scheduled polling; `daily` remains as a compatibility alias.
+- OfficeWhere remains opt-in and should be queried from mail-derived file/project hints, not broad document sweeps.
+
 ## Roadmap
 
 1. 0.1.x: strengthen provider compatibility, add scheduled ingest examples, broaden wiki operations with the same typed/audited model.
@@ -97,5 +103,6 @@ It is not a generic vector database. It separates raw providers, sanitized evide
 6. 0.6.0: operational status command.
 7. 0.7.0: provider compatibility matrix.
 8. 0.8.0: unattended daily runner.
-9. 0.9.0: user-level autostart installer. 0.9.x: migration command and selective local recall.
-10. 1.0: stable local-first context platform with documented provider contracts, release artifacts, and migration policy.
+9. 0.9.0: user-level autostart installer.
+10. 0.10.0: MailWhere file-link evidence and run alias. 0.10.x: link lookup refinement, migration command, selective local recall.
+11. 1.0: stable local-first context platform with documented provider contracts, release artifacts, and migration policy.

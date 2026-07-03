@@ -6,7 +6,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
 
 ## 현재 릴리즈
 
-- 최신 로컬 버전: **0.9.1**
+- 최신 로컬 버전: **0.10.0**
 - 공개 원격 저장소: <https://github.com/knowgyu/contextWhere>
 - 기본 브랜치: `main`
 - 기준 태그:
@@ -19,7 +19,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
   - `v0.6.0`: operational status command and deployability check
   - `v0.7.0`: provider compatibility matrix
   - `v0.7.1`: documentation repair release
-  - `v0.9.1`: unattended daily runner
+  - `v0.10.0`: unattended daily runner
 
 ## 왜 만드는가
 
@@ -50,7 +50,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
 - `backup create/restore`: `work_wiki`와 `.contextwhere`를 manifest 포함 zip으로 백업하고 빈 target에만 복원.
 - `status`: DB/wiki/ingest/entity/recall/backup/lint 상태를 read-only JSON으로 점검.
 - `providers matrix`: MailWhere/OfficeWhere provider별 live requirement, 안전 경계, ingest kind를 JSON으로 고정.
-- `daily`: init → MailWhere ingest → entity extract → wiki draft → lint → status를 한 번에 실행. OfficeWhere 문서 검색은 `--officewhere-query`를 준 경우에만 실행한다.
+- `run`/`daily`: MailWhere ingest → file-link evidence → entity extract → wiki draft → lint → status를 한 번에 실행. OfficeWhere 문서 검색은 `--officewhere-query`를 준 경우에만 실행한다.
 - `autostart`: user-level systemd timer 또는 Windows Task Scheduler 등록 계획/설치.
 - Ubuntu cron/systemd 운영 예제.
 
@@ -73,7 +73,7 @@ contextwhere init --json
 contextwhere status --json
 contextwhere providers matrix --json
 contextwhere providers health --all --json
-contextwhere daily --json
+contextwhere run --json
 contextwhere autostart plan --json
 ```
 
@@ -139,7 +139,7 @@ contextwhere backup restore .contextwhere/backups/contextwhere-20260703.zip /tmp
 
 ## 릴리즈 로드맵
 
-- **0.9.x**: MailWhere↔OfficeWhere file-link evidence, migration command, selective local recall.
+- **0.10.x**: MailWhere↔OfficeWhere link lookup refinement, migration command, selective local recall.
 - **1.0 준비**: people/projects/decisions/tasks 전용 typed wiki promotion, MCP/long-running agent tool surface.
 - **1.0**: provider contracts, release artifacts, migration policy가 안정화된 local-first context platform.
 
