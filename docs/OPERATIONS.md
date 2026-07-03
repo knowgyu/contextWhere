@@ -13,7 +13,8 @@
 ```bash
 contextwhere providers health --all --json
 contextwhere ingest --provider mailwhere --limit 50 --json
-contextwhere ingest --provider officewhere --query "recent work" --limit 25 --json
+# Optional only when a mail/project hint exists:
+contextwhere ingest --provider officewhere --query "file or project hint" --limit 25 --json
 contextwhere query "customer or project" --json
 contextwhere wiki draft --query "customer or project" --json
 contextwhere wiki apply .contextwhere/drafts/wiki/<draft>.json --json

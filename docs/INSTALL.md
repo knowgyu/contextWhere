@@ -1,6 +1,6 @@
 # contextWhere install and quick start
 
-contextWhere 0.9.0 is a local-first Python/SQLite CLI. Provider ingest is read-only; wiki writes happen only through audited `wiki apply` drafts.
+contextWhere 0.9.1 is a local-first Python/SQLite CLI. Provider ingest is read-only; wiki writes happen only through audited `wiki apply` drafts.
 
 ## Requirements
 
@@ -48,7 +48,7 @@ contextwhere daily --json
 contextwhere autostart plan --json
 ```
 
-`daily` runs init, safe provider ingest, entity extraction, wiki draft, lint, and status. It does not apply wiki drafts automatically.
+`daily` runs init, MailWhere ingest, entity extraction, wiki draft, lint, and status. It skips OfficeWhere document search unless `--officewhere-query` is set. It does not apply wiki drafts automatically.
 
 To keep it running without manual commands, inspect the plan and install user-level autostart once:
 
@@ -69,12 +69,12 @@ contextwhere daily \
   --json
 ```
 
-OfficeWhere must be loopback/local:
+OfficeWhere search is opt-in and must be loopback/local:
 
 ```bash
 contextwhere daily \
   --officewhere-base-url http://127.0.0.1:18765 \
-  --query "project name" \
+  --officewhere-query "file or project hint from mail" \
   --json
 ```
 

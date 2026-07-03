@@ -1,6 +1,6 @@
 # contextWhere 운영 스케줄 예제
 
-설치 후 기본 운영은 `contextwhere autostart install` 한 번이면 된다. 이 명령은 OS 기본 스케줄러에 `contextwhere daily --json`을 등록한다.
+설치 후 기본 운영은 `contextwhere autostart install` 한 번이면 된다. 이 명령은 OS 기본 스케줄러에 `contextwhere daily --json`을 등록한다. 이 기본 daily는 OfficeWhere 문서 검색을 하지 않는다.
 
 ## 사전 점검
 

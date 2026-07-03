@@ -183,7 +183,11 @@ def cmd_daily(args: argparse.Namespace) -> int:
     init_db(paths.db_path)
     steps: list[dict[str, Any]] = [{"step": "init", "ok": True, "db_path": str(paths.db_path)}]
 
-    ingest_results = [run_ingest_step(args, "mailwhere"), run_ingest_step(args, "officewhere")]
+    ingest_results = [run_ingest_step(args, "mailwhere")]
+    if args.officewhere_query:
+        ingest_results.append(run_ingest_step(argparse.Namespace(**{**vars(args), "query": args.officewhere_query}), "officewhere"))
+    else:
+        ingest_results.append({"provider": "officewhere", "ok": True, "status": "skipped", "reason": "officewhere requires explicit --officewhere-query"})
     steps.append({"step": "ingest", "ok": True, "results": ingest_results})
 
     entity_result = extract_entities(paths.db_path, query=args.query or "", limit=args.limit)
@@ -474,6 +478,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--mailwhere-command", default="MailWhere.Cli.exe")
     p.add_argument("--mailwhere-db")
     p.add_argument("--officewhere-base-url")
+    p.add_argument("--officewhere-query", help="Opt-in OfficeWhere search. Daily skips document search unless this is set.")
     p.set_defaults(func=cmd_daily)
 
     autostart = sub.add_parser("autostart")

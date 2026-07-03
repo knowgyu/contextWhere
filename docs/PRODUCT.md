@@ -81,6 +81,12 @@ It is not a generic vector database. It separates raw providers, sanitized evide
 - `autostart install` asks Y/N before installing a user-level systemd timer or Windows scheduled task.
 - The scheduled job runs `daily`; no custom long-running daemon is owned by contextWhere.
 
+## 0.9.1 OfficeWhere daily policy
+
+- Daily runs do not search OfficeWhere by default.
+- OfficeWhere search requires explicit `--officewhere-query`.
+- The intended next step is MailWhere-to-OfficeWhere file-link evidence, not full document mirroring.
+
 ## Roadmap
 
 1. 0.1.x: strengthen provider compatibility, add scheduled ingest examples, broaden wiki operations with the same typed/audited model.

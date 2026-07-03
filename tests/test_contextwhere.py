@@ -651,10 +651,30 @@ def test_daily_runs_safe_unattended_cycle(tmp_path, capsys):
     assert result["ok"] is True
     assert result["note"] == "wiki drafts are not applied automatically"
     ingest = next(step for step in result["steps"] if step["step"] == "ingest")
-    assert [item["status"] for item in ingest["results"]] == ["unavailable", "unavailable"]
+    assert [item["status"] for item in ingest["results"]] == ["unavailable", "skipped"]
+    assert ingest["results"][1]["reason"] == "officewhere requires explicit --officewhere-query"
     draft = next(step for step in result["steps"] if step["step"] == "wiki_draft")
     assert Path(draft["draft_path"]).exists()
     assert (tmp_path / ".contextwhere" / "contextwhere.sqlite3").exists()
+
+
+def test_daily_officewhere_search_is_explicit_opt_in(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli([
+        "daily",
+        "--root",
+        str(tmp_path),
+        "--mailwhere-command",
+        "definitely-missing-mailwhere-cli",
+        "--officewhere-base-url",
+        "http://127.0.0.1:9",
+        "--officewhere-query",
+        "linked file",
+        "--json",
+    ]) == 0
+    result = json.loads(capsys.readouterr().out)
+    ingest = next(step for step in result["steps"] if step["step"] == "ingest")
+    assert [item["status"] for item in ingest["results"]] == ["unavailable", "unavailable"]
 
 def test_status_reports_operational_counts(tmp_path, capsys):
     write_wiki(tmp_path)
