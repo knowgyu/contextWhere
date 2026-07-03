@@ -51,10 +51,17 @@ It is not a generic vector database. It separates raw providers, sanitized evide
 - bundle은 evidence id 목록, query, search mode, limit을 보존한다.
 - 외부 embedding/API 없이 local-first recall 단위를 만든다.
 
+## 0.5.0 audited backup/restore
+
+- `backup create` packages `work_wiki/` and `.contextwhere/` with a manifest.
+- `backup restore` validates archive member paths and restores only into an empty or absent root.
+- Backup/restore keeps the local-first product deployable without requiring a hosted service.
+
 ## Roadmap
 
 1. 0.1.x: strengthen provider compatibility, add scheduled ingest examples, broaden wiki operations with the same typed/audited model.
 2. 0.2.0: deterministic entity extraction and relationship seed. 0.2.x: richer people/projects/decisions/tasks extraction and promotion workflows.
 3. 0.3.0: JSON CLI tool gateway. 0.3.x: MCP server and long-running agent tool surfaces.
 4. 0.4.0: local recall bundles. 0.4.x: selective local embedding/vector layer for ambiguous recall.
-5. 1.0: stable local-first context platform with documented provider contracts, backup/restore, release artifacts, and migration policy.
+5. 0.5.0: audited backup/restore foundation. 0.5.x: migration/status commands and provider compatibility matrix.
+6. 1.0: stable local-first context platform with documented provider contracts, release artifacts, and migration policy.

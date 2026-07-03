@@ -36,3 +36,9 @@ Initialized contextWhere folder from autoresearch discussion. Copied research re
 - `contextwhere recall create/list/show` CLI와 tool gateway recall calls를 추가했다.
 - `contextwhere verify --json` smoke에 recall bundle 단계를 포함했다.
 - Evidence: `docs/releases/v0.4.0.md`, `src/contextwhere/recall.py`, tests under `tests/`.
+
+## 2026-07-03 — contextWhere 0.5.0 audited backup/restore
+
+- Added manifest-based local backup archive for `work_wiki/` and `.contextwhere/`.
+- Restore validates archive members and refuses non-empty targets to avoid overwriting user state.
+- Evidence: `docs/releases/v0.5.0.md`, `src/contextwhere/backup.py`, tests under `tests/`.

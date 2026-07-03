@@ -54,16 +54,29 @@ contextwhere tools call query_evidence --input-json '{"query":"contextWhere","li
 contextwhere tools call entities_list --input-json '{"limit":20}' --json
 ```
 
-0.4.0 gateway는 JSON object 입력만 허용하며, 등록된 safe tool만 실행한다. Provider mutation이나 OS-visible action은 포함하지 않는다.
+0.5.0 gateway는 JSON object 입력만 허용하며, 등록된 safe tool만 실행한다. Provider mutation이나 OS-visible action은 포함하지 않는다.
 
-## Backup
+## Backup and restore
 
-Back up these paths together:
+0.5.0 ships an audited local backup command that packages the project wiki and contextWhere state together:
 
-- `.contextwhere/contextwhere.sqlite3`
-- `.contextwhere/drafts/wiki/` if unreviewed drafts matter
-- `.contextwhere/audit/wiki/`
+```bash
+contextwhere backup create --output .contextwhere/backups/contextwhere-$(date +%Y%m%d).zip --json
+```
+
+The archive contains a `contextwhere-backup-manifest.json` plus files under only these roots:
+
 - `work_wiki/`
+- `.contextwhere/` except `.contextwhere/backups/`
+
+Restore refuses non-empty target roots to avoid overwriting user state:
+
+```bash
+contextwhere backup restore .contextwhere/backups/contextwhere-20260703.zip /tmp/contextwhere-restored --json
+contextwhere query "customer or project" --root /tmp/contextwhere-restored --json
+```
+
+For off-host retention, copy the zip with your normal encrypted backup mechanism. Do not edit archive members manually; restore validates the manifest and member paths.
 
 ## Provider unavailable handling
 

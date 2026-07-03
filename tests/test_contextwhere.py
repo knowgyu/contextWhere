@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import stat
+import zipfile
 from pathlib import Path
 
 from contextwhere.cli import main
@@ -546,3 +547,70 @@ def test_tools_recall_bundle_calls(tmp_path, capsys):
     shown = json.loads(capsys.readouterr().out)
     assert shown["ok"] is True
     assert shown["items"]
+
+
+def test_backup_create_and_restore_roundtrip(tmp_path, capsys):
+    source = tmp_path / "source"
+    source.mkdir()
+    write_wiki(source)
+    assert run_cli(["init", "--root", str(source)]) == 0
+    assert run_cli(["ingest", "--provider", "mailwhere", "--fixture", str(ROOT_FIXTURES / "mailwhere_tasks.json"), "--root", str(source)]) == 0
+    capsys.readouterr()
+    backup = tmp_path / "backup.zip"
+    assert run_cli(["backup", "create", "--root", str(source), "--output", str(backup), "--json"]) == 0
+    created = json.loads(capsys.readouterr().out)
+    assert created["ok"] is True
+    assert backup.exists()
+    target = tmp_path / "restored"
+    assert run_cli(["backup", "restore", str(backup), str(target), "--json"]) == 0
+    restored = json.loads(capsys.readouterr().out)
+    assert restored["ok"] is True
+    assert (target / "work_wiki" / "index.md").exists()
+    assert (target / ".contextwhere" / "contextwhere.sqlite3").exists()
+    assert run_cli(["query", "contextWhere", "--root", str(target), "--json"]) == 0
+    queried = json.loads(capsys.readouterr().out)
+    assert queried["items"]
+
+
+def test_backup_restore_refuses_non_empty_target(tmp_path, capsys):
+    source = tmp_path / "source"
+    source.mkdir()
+    write_wiki(source)
+    assert run_cli(["init", "--root", str(source)]) == 0
+    backup = tmp_path / "backup.zip"
+    assert run_cli(["backup", "create", "--root", str(source), "--output", str(backup), "--json"]) == 0
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "keep.txt").write_text("do not overwrite", encoding="utf-8")
+    capsys.readouterr()
+    assert run_cli(["backup", "restore", str(backup), str(target), "--json"]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is False
+    assert (target / "keep.txt").read_text(encoding="utf-8") == "do not overwrite"
+
+
+def test_backup_create_excludes_backup_directory(tmp_path, capsys):
+    source = tmp_path / "source"
+    source.mkdir()
+    write_wiki(source)
+    assert run_cli(["init", "--root", str(source)]) == 0
+    capsys.readouterr()
+    backup = source / ".contextwhere" / "backups" / "self.zip"
+    assert run_cli(["backup", "create", "--root", str(source), "--output", str(backup), "--json"]) == 0
+    created = json.loads(capsys.readouterr().out)
+    assert created["ok"] is True
+    assert all(not item.startswith(".contextwhere/backups/") for item in created["included"])
+
+
+def test_backup_restore_rejects_path_traversal_member(tmp_path, capsys):
+    backup = tmp_path / "unsafe.zip"
+    with zipfile.ZipFile(backup, "w") as zf:
+        zf.writestr("contextwhere-backup-manifest.json", json.dumps({"format": "contextwhere-backup-v1"}))
+        zf.writestr("work_wiki/../../evil.txt", "bad")
+    target = tmp_path / "target"
+    assert run_cli(["backup", "restore", str(backup), str(target), "--json"]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is False
+    assert "unsafe archive member" in result["error"]
+    assert not target.exists()
+    assert not (tmp_path / "evil.txt").exists()

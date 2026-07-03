@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import zipfile
 from pathlib import Path
 from typing import Any
 from dataclasses import dataclass, field
@@ -19,6 +20,7 @@ from .verify import run_verify
 from .entities import extract_entities, list_entities, list_relationships
 from .tools import call_tool, manifest as tools_manifest, parse_input as parse_tool_input
 from .recall import create_bundle, list_bundles, show_bundle
+from .backup import create_backup, restore_backup
 
 
 def emit(data: Any, as_json: bool = False) -> None:
@@ -225,6 +227,22 @@ def cmd_entities(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_backup(args: argparse.Namespace) -> int:
+    try:
+        if args.backup_command == "create":
+            result = create_backup(args.root, args.output)
+        elif args.backup_command == "restore":
+            result = restore_backup(args.backup, args.target_root)
+        else:
+            raise SystemExit(f"unsupported backup command: {args.backup_command}")
+    except (OSError, ValueError, json.JSONDecodeError, zipfile.BadZipFile) as exc:
+        result = {"ok": False, "error": f"backup failed: {type(exc).__name__}: {exc}"}
+        emit(result, args.json)
+        return 2
+    emit(result, args.json)
+    return 0 if result.get("ok") else 2
+
+
 def cmd_recall(args: argparse.Namespace) -> int:
     paths = resolve_paths(args.root)
     ensure_dirs(paths)
@@ -343,6 +361,19 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(p)
     p.add_argument("--limit", type=int, default=100)
     p.set_defaults(func=cmd_entities)
+
+    backup = sub.add_parser("backup")
+    add_common(backup)
+    backup_sub = backup.add_subparsers(dest="backup_command", required=True)
+    p = backup_sub.add_parser("create")
+    add_common(p)
+    p.add_argument("--output", required=True)
+    p.set_defaults(func=cmd_backup)
+    p = backup_sub.add_parser("restore")
+    p.add_argument("backup")
+    p.add_argument("target_root")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_backup)
 
     recall = sub.add_parser("recall")
     add_common(recall)

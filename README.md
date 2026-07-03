@@ -6,7 +6,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
 
 ## 현재 릴리즈
 
-- 최신 로컬 버전: **0.4.0**
+- 최신 로컬 버전: **0.5.0**
 - 공개 원격 저장소: <https://github.com/knowgyu/contextWhere>
 - 기본 브랜치: `main`
 - 기준 태그:
@@ -15,6 +15,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
   - `v0.2.0`: deterministic entity extraction and relationship seed
   - `v0.3.0`: agent JSON tool gateway
   - `v0.4.0`: local recall bundles
+  - `v0.5.0`: audited local backup and restore foundation
 
 ## 왜 만드는가
 
@@ -28,7 +29,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
 
 핵심 원칙은 **원문은 불변, provider 결과는 untrusted evidence, wiki 변경은 감사 가능한 제한 작업**이다.
 
-## 0.1.x에서 되는 것
+## 현재 되는 것
 
 - Python/SQLite 기반 로컬 CLI.
 - MailWhere/OfficeWhere read-only provider adapter.
@@ -47,6 +48,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
 - `entities extract/list/relationships`: evidence에서 deterministic entity와 co-occurrence relationship seed 추출.
 - `tools manifest/call`: 외부 agent가 안전한 JSON tool gateway로 query/capture/entities/recall 기능 호출.
 - `recall create/list/show`: evidence query 결과를 재현 가능한 local recall bundle로 저장.
+- `backup create/restore`: `work_wiki`와 `.contextwhere`를 manifest가 포함된 zip으로 백업하고 빈 target에만 복원.
 - Ubuntu cron/systemd 운영 예제.
 
 ## 빠른 시작
@@ -82,6 +84,7 @@ contextwhere tools manifest --json
 contextwhere tools call query_evidence --input-json '{"query":"contextWhere"}' --json
 contextwhere recall create --name "contextWhere focus" --query contextWhere --json
 contextwhere recall list --json
+contextwhere backup create --output .contextwhere/backups/contextwhere-$(date +%Y%m%d).zip --json
 ```
 
 ## 운영 흐름
@@ -101,6 +104,13 @@ contextwhere tools manifest --json
 contextwhere tools call query_evidence --input-json '{"query":"contextWhere"}' --json
 contextwhere recall create --name "contextWhere focus" --query contextWhere --json
 contextwhere recall list --json
+contextwhere backup create --output .contextwhere/backups/contextwhere-$(date +%Y%m%d).zip --json
+```
+
+복원은 덮어쓰기를 방지하기 위해 비어 있거나 존재하지 않는 target root에만 수행한다.
+
+```bash
+contextwhere backup restore .contextwhere/backups/contextwhere-20260703.zip /tmp/contextwhere-restored --json
 ```
 
 중요 운영 환경에서는 `wiki apply`를 자동화하기 전에 draft를 확인한다. `wiki apply`는 감사 로그와 rollback 내용을 남기지만, compiled wiki에 들어가는 문장은 장기 지식이 되므로 신중하게 적용한다.
@@ -130,8 +140,10 @@ contextwhere recall list --json
 - **0.2.x 이후**: people/projects/decisions/tasks 전용 extractor와 wiki 승격 workflow 강화.
 - **0.3.0**: agent JSON tool gateway.
 - **0.3.x 이후**: MCP 호환 서버와 장기 실행 tool server로 확장.
-- **0.4.x**: 선택적 local embedding/vector recall.
-- **1.0**: backup/restore, migration policy, provider compatibility matrix, 안정 운영 문서까지 포함한 local-first context platform.
+- **0.4.0**: 재현 가능한 local recall bundle.
+- **0.5.0**: 감사 가능한 local backup/restore foundation.
+- **0.5.x 이후**: migration/status 명령, provider compatibility matrix, 선택적 local embedding/vector recall.
+- **1.0**: 안정 운영 문서와 릴리즈 절차가 포함된 local-first context platform.
 
 ## 개발/검증 명령
 

@@ -1,6 +1,6 @@
 # contextWhere install and quick start
 
-contextWhere 0.4.0 is a local-first Python/SQLite CLI. It is safe to run on a workstation or server because provider ingest is read-only and wiki writes happen only through audited `wiki apply` drafts.
+contextWhere 0.5.0 is a local-first Python/SQLite CLI. It is safe to run on a workstation or server because provider ingest is read-only and wiki writes happen only through audited `wiki apply` drafts.
 
 ## Requirements
 
@@ -35,6 +35,7 @@ contextwhere entities extract --json
 contextwhere entities list --json
 contextwhere tools manifest --json
 contextwhere recall create --name "contextWhere focus" --query contextWhere --json
+contextwhere backup create --output .contextwhere/backups/contextwhere-smoke.zip --json
 ```
 
 ## Live provider examples
@@ -61,3 +62,18 @@ contextwhere ingest \
 ```
 
 Non-loopback OfficeWhere URLs are rejected as `unsafe_url`. Live ingest returns exit code 2 with `ok:false`, `status:"unavailable"`, and provider details when a live provider is missing or unsafe; fixture ingest remains a local test path.
+
+## Backup and restore smoke
+
+Create a local backup after ingest/wiki updates:
+
+```bash
+contextwhere backup create --output .contextwhere/backups/contextwhere-$(date +%Y%m%d).zip --json
+```
+
+Restore only into an empty or absent root. This avoids overwriting an existing wiki or SQLite state:
+
+```bash
+contextwhere backup restore .contextwhere/backups/contextwhere-20260703.zip /tmp/contextwhere-restored --json
+contextwhere query contextWhere --root /tmp/contextwhere-restored --json
+```
