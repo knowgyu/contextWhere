@@ -70,6 +70,16 @@ CREATE TABLE IF NOT EXISTS relationships (
   created_at TEXT NOT NULL,
   UNIQUE(subject_entity_id, predicate, object_entity_id, evidence_id)
 );
+CREATE TABLE IF NOT EXISTS recall_bundles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  bundle_id TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  query TEXT NOT NULL,
+  search_mode TEXT NOT NULL,
+  limit_value INTEGER NOT NULL,
+  evidence_ids TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL
+);
 """
 
 FTS_SCHEMA = """

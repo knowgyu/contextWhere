@@ -12,6 +12,7 @@ from .schemas import evidence_from_item
 from .wiki import apply_wiki_draft, create_wiki_draft, lint_wiki
 from .capture import capture_session_text
 from .entities import extract_entities, list_entities
+from .recall import create_bundle, list_bundles
 
 
 @dataclass
@@ -121,6 +122,14 @@ def run_verify(root: Path | None = None, keep: bool = False) -> dict:
             raise RuntimeError(f"no entities extracted: {result}")
         return str(len(entities))
 
+    def recall_step() -> str:
+        paths = resolve_paths(work_root)
+        bundle = create_bundle(paths.db_path, name="verify recall", query="contextWhere", limit=10)
+        bundles = list_bundles(paths.db_path, limit=10)
+        if not bundles:
+            raise RuntimeError(f"no recall bundles saved: {bundle}")
+        return bundle["bundle_id"]
+
     def capture_step() -> str:
         paths = resolve_paths(work_root)
         record = capture_session_text("Goal: verify contextWhere\nVerification: pytest-style smoke\n", "verify:session")
@@ -137,6 +146,7 @@ def run_verify(root: Path | None = None, keep: bool = False) -> dict:
             ("wiki-draft-apply", wiki_step),
             ("lint", lint_step),
             ("entities-extract", entities_step),
+            ("recall-bundle", recall_step),
             ("capture-session", capture_step),
         ]:
             run_step(steps, name, fn)

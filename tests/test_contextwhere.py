@@ -397,7 +397,7 @@ def test_verify_command_runs_smoke(capsys):
     out = capsys.readouterr().out
     data = json.loads(out)
     assert data["ok"] is True
-    assert [step["name"] for step in data["steps"]] == ["init", "ingest", "query", "wiki-draft-apply", "lint", "entities-extract", "capture-session"]
+    assert [step["name"] for step in data["steps"]] == ["init", "ingest", "query", "wiki-draft-apply", "lint", "entities-extract", "recall-bundle", "capture-session"]
 
 
 def test_verify_command_creates_child_under_named_root(tmp_path, capsys):
@@ -506,3 +506,43 @@ def test_tools_call_validates_limit_and_required_fields(capsys):
     assert "limit" in json.loads(capsys.readouterr().out)["error"]
     assert run_cli(["tools", "call", "query_evidence", "--input-json", '{"limit":1}', "--json"]) == 2
     assert "query" in json.loads(capsys.readouterr().out)["error"]
+
+
+def test_recall_create_list_show(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli(["init", "--root", str(tmp_path)]) == 0
+    assert run_cli(["ingest", "--provider", "mailwhere", "--fixture", str(ROOT_FIXTURES / "mailwhere_tasks.json"), "--root", str(tmp_path)]) == 0
+    capsys.readouterr()
+    assert run_cli(["recall", "create", "--root", str(tmp_path), "--name", "contextWhere focus", "--query", "contextWhere", "--json"]) == 0
+    created = json.loads(capsys.readouterr().out)
+    assert created["ok"] is True
+    assert created["bundle_id"].startswith("recall:")
+    assert created["evidence_ids"]
+    assert run_cli(["recall", "list", "--root", str(tmp_path), "--json"]) == 0
+    listed = json.loads(capsys.readouterr().out)
+    assert listed["items"][0]["bundle_id"] == created["bundle_id"]
+    assert run_cli(["recall", "show", created["bundle_id"], "--root", str(tmp_path), "--json"]) == 0
+    shown = json.loads(capsys.readouterr().out)
+    assert shown["ok"] is True
+    assert shown["items"]
+
+
+def test_recall_rejects_invalid_limit(tmp_path, capsys):
+    assert run_cli(["recall", "create", "--root", str(tmp_path), "--name", "x", "--query", "y", "--limit", "0", "--json"]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is False
+    assert "limit" in result["error"]
+
+
+def test_tools_recall_bundle_calls(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli(["init", "--root", str(tmp_path)]) == 0
+    assert run_cli(["ingest", "--provider", "mailwhere", "--fixture", str(ROOT_FIXTURES / "mailwhere_tasks.json"), "--root", str(tmp_path)]) == 0
+    capsys.readouterr()
+    assert run_cli(["tools", "call", "recall_create", "--root", str(tmp_path), "--input-json", '{"name":"ctx","query":"contextWhere"}', "--json"]) == 0
+    created = json.loads(capsys.readouterr().out)
+    assert created["ok"] is True
+    assert run_cli(["tools", "call", "recall_show", "--root", str(tmp_path), "--input-json", json.dumps({"bundle_id": created["bundle_id"]}), "--json"]) == 0
+    shown = json.loads(capsys.readouterr().out)
+    assert shown["ok"] is True
+    assert shown["items"]

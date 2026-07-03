@@ -29,3 +29,10 @@ Initialized contextWhere folder from autoresearch discussion. Copied research re
 - 외부 agent가 사용할 수 있는 `contextwhere tools manifest/call` JSON gateway를 추가했다.
 - Query, capture-session, entity extraction/list/relationship list tool을 등록했다.
 - Evidence: `docs/releases/v0.3.0.md`, `src/contextwhere/tools.py`, tests under `tests/`.
+
+## 2026-07-03 — contextWhere 0.4.0 local recall bundles
+
+- Evidence query 결과를 저장하는 local recall bundle 기능을 추가했다.
+- `contextwhere recall create/list/show` CLI와 tool gateway recall calls를 추가했다.
+- `contextwhere verify --json` smoke에 recall bundle 단계를 포함했다.
+- Evidence: `docs/releases/v0.4.0.md`, `src/contextwhere/recall.py`, tests under `tests/`.

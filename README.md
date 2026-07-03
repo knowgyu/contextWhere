@@ -6,7 +6,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
 
 ## 현재 릴리즈
 
-- 최신 로컬 버전: **0.3.0**
+- 최신 로컬 버전: **0.4.0**
 - 공개 원격 저장소: <https://github.com/knowgyu/contextWhere>
 - 기본 브랜치: `main`
 - 기준 태그:
@@ -14,6 +14,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
   - `v0.1.1`: Korean README and operational verification foundation
   - `v0.2.0`: deterministic entity extraction and relationship seed
   - `v0.3.0`: agent JSON tool gateway
+  - `v0.4.0`: local recall bundles
 
 ## 왜 만드는가
 
@@ -44,7 +45,8 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
 - `lint`: work_wiki frontmatter/evidence/lifecycle 점검.
 - `verify`: 설치 후 자체 smoke 검증.
 - `entities extract/list/relationships`: evidence에서 deterministic entity와 co-occurrence relationship seed 추출.
-- `tools manifest/call`: 외부 agent가 안전한 JSON tool gateway로 query/capture/entities 기능 호출.
+- `tools manifest/call`: 외부 agent가 안전한 JSON tool gateway로 query/capture/entities/recall 기능 호출.
+- `recall create/list/show`: evidence query 결과를 재현 가능한 local recall bundle로 저장.
 - Ubuntu cron/systemd 운영 예제.
 
 ## 빠른 시작
@@ -78,6 +80,8 @@ contextwhere entities extract --json
 contextwhere entities list --json
 contextwhere tools manifest --json
 contextwhere tools call query_evidence --input-json '{"query":"contextWhere"}' --json
+contextwhere recall create --name "contextWhere focus" --query contextWhere --json
+contextwhere recall list --json
 ```
 
 ## 운영 흐름
@@ -95,6 +99,8 @@ contextwhere entities extract --json
 contextwhere entities list --json
 contextwhere tools manifest --json
 contextwhere tools call query_evidence --input-json '{"query":"contextWhere"}' --json
+contextwhere recall create --name "contextWhere focus" --query contextWhere --json
+contextwhere recall list --json
 ```
 
 중요 운영 환경에서는 `wiki apply`를 자동화하기 전에 draft를 확인한다. `wiki apply`는 감사 로그와 rollback 내용을 남기지만, compiled wiki에 들어가는 문장은 장기 지식이 되므로 신중하게 적용한다.

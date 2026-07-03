@@ -8,6 +8,7 @@ from .capture import capture_session_text
 from .config import ensure_dirs, resolve_paths
 from .db import init_db, insert_evidence, query_evidence_with_mode
 from .entities import extract_entities, list_entities, list_relationships
+from .recall import create_bundle, list_bundles, show_bundle
 
 MAX_LIMIT = 500
 
@@ -44,6 +45,27 @@ TOOL_MANIFEST: list[dict[str, Any]] = [
         "name": "relationships_list",
         "description": "List deterministic entity relationships.",
         "input_schema": {"type": "object", "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": MAX_LIMIT}}},
+        "safe": True,
+        "mutates": False,
+    },
+    {
+        "name": "recall_create",
+        "description": "Create a reproducible local recall bundle from a query.",
+        "input_schema": {"type": "object", "properties": {"name": {"type": "string"}, "query": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 100}}, "required": ["name", "query"]},
+        "safe": True,
+        "mutates": True,
+    },
+    {
+        "name": "recall_list",
+        "description": "List saved local recall bundles.",
+        "input_schema": {"type": "object", "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 100}}},
+        "safe": True,
+        "mutates": False,
+    },
+    {
+        "name": "recall_show",
+        "description": "Show a saved recall bundle and its current evidence rows.",
+        "input_schema": {"type": "object", "properties": {"bundle_id": {"type": "string"}}, "required": ["bundle_id"]},
         "safe": True,
         "mutates": False,
     },
@@ -144,4 +166,28 @@ def call_tool(root: str | Path, name: str, payload: dict[str, Any]) -> dict[str,
         if not paths.db_path.exists():
             return not_initialized(name)
         return {"ok": True, "tool": name, "items": list_relationships(paths.db_path, limit=limit)}
+    if name == "recall_create":
+        recall_name = require_string(payload, "name")
+        query = require_string(payload, "query")
+        limit = bounded_limit(payload, 20)
+        paths = resolve_paths(root)
+        ensure_dirs(paths)
+        init_db(paths.db_path)
+        result = create_bundle(paths.db_path, recall_name, query, limit=limit)
+        result["tool"] = name
+        return result
+    if name == "recall_list":
+        limit = bounded_limit(payload, 50)
+        paths = resolve_paths(root)
+        if not paths.db_path.exists():
+            return not_initialized(name)
+        return {"ok": True, "tool": name, "items": list_bundles(paths.db_path, limit=limit)}
+    if name == "recall_show":
+        bundle_id = require_string(payload, "bundle_id")
+        paths = resolve_paths(root)
+        if not paths.db_path.exists():
+            return {"ok": False, "tool": name, "error": "bundle not found", "bundle_id": bundle_id}
+        result = show_bundle(paths.db_path, bundle_id)
+        result["tool"] = name
+        return result
     return {"ok": False, "tool": name, "error": f"unknown tool: {name}"}

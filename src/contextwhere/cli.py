@@ -18,6 +18,7 @@ from .wiki import apply_wiki_draft, create_wiki_draft, lint_wiki
 from .verify import run_verify
 from .entities import extract_entities, list_entities, list_relationships
 from .tools import call_tool, manifest as tools_manifest, parse_input as parse_tool_input
+from .recall import create_bundle, list_bundles, show_bundle
 
 
 def emit(data: Any, as_json: bool = False) -> None:
@@ -224,6 +225,27 @@ def cmd_entities(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_recall(args: argparse.Namespace) -> int:
+    paths = resolve_paths(args.root)
+    ensure_dirs(paths)
+    init_db(paths.db_path)
+    try:
+        if args.recall_command == "create":
+            result = create_bundle(paths.db_path, name=args.name, query=args.query, limit=args.limit)
+        elif args.recall_command == "list":
+            result = {"ok": True, "items": list_bundles(paths.db_path, limit=args.limit)}
+        elif args.recall_command == "show":
+            result = show_bundle(paths.db_path, args.bundle_id)
+        else:
+            raise SystemExit(f"unsupported recall command: {args.recall_command}")
+    except ValueError as exc:
+        result = {"ok": False, "error": str(exc)}
+        emit(result, args.json)
+        return 2
+    emit(result, args.json)
+    return 0 if result.get("ok") else 2
+
+
 def cmd_tools(args: argparse.Namespace) -> int:
     if args.tools_command == "manifest":
         result = tools_manifest()
@@ -321,6 +343,24 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(p)
     p.add_argument("--limit", type=int, default=100)
     p.set_defaults(func=cmd_entities)
+
+    recall = sub.add_parser("recall")
+    add_common(recall)
+    recall_sub = recall.add_subparsers(dest="recall_command", required=True)
+    p = recall_sub.add_parser("create")
+    add_common(p)
+    p.add_argument("--name", required=True)
+    p.add_argument("--query", required=True)
+    p.add_argument("--limit", type=int, default=20)
+    p.set_defaults(func=cmd_recall)
+    p = recall_sub.add_parser("list")
+    add_common(p)
+    p.add_argument("--limit", type=int, default=50)
+    p.set_defaults(func=cmd_recall)
+    p = recall_sub.add_parser("show")
+    add_common(p)
+    p.add_argument("bundle_id")
+    p.set_defaults(func=cmd_recall)
 
     tools = sub.add_parser("tools")
     add_common(tools)
