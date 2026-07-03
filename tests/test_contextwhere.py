@@ -617,6 +617,28 @@ def test_backup_restore_rejects_path_traversal_member(tmp_path, capsys):
     assert not (tmp_path / "evil.txt").exists()
 
 
+
+def test_daily_runs_safe_unattended_cycle(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli([
+        "daily",
+        "--root",
+        str(tmp_path),
+        "--mailwhere-command",
+        "definitely-missing-mailwhere-cli",
+        "--officewhere-base-url",
+        "http://127.0.0.1:9",
+        "--json",
+    ]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is True
+    assert result["note"] == "wiki drafts are not applied automatically"
+    ingest = next(step for step in result["steps"] if step["step"] == "ingest")
+    assert [item["status"] for item in ingest["results"]] == ["unavailable", "unavailable"]
+    draft = next(step for step in result["steps"] if step["step"] == "wiki_draft")
+    assert Path(draft["draft_path"]).exists()
+    assert (tmp_path / ".contextwhere" / "contextwhere.sqlite3").exists()
+
 def test_status_reports_operational_counts(tmp_path, capsys):
     write_wiki(tmp_path)
     assert run_cli(["init", "--root", str(tmp_path), "--json"]) == 0

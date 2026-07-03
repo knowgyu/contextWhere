@@ -1,13 +1,31 @@
 # contextWhere install and quick start
 
-contextWhere 0.7.1 is a local-first Python/SQLite CLI. It is safe to run on a workstation or server because provider ingest is read-only and wiki writes happen only through audited `wiki apply` drafts.
+contextWhere 0.8.0 is a local-first Python/SQLite CLI. Provider ingest is read-only; wiki writes happen only through audited `wiki apply` drafts.
 
 ## Requirements
 
 - Python 3.11+
-- SQLite with FTS5 support (included in standard CPython builds on Ubuntu and Windows Python installers)
+- SQLite with FTS5 support
 - Optional: MailWhere CLI (`MailWhere.Cli.exe`) on Windows for live mail/task ingest
 - Optional: OfficeWhere loopback HTTP provider for live document search
+
+## Easiest user install
+
+From this repo:
+
+```bash
+python -m pip install --user pipx
+python -m pipx ensurepath
+pipx install git+https://github.com/knowgyu/contextWhere.git
+contextwhere verify --json
+```
+
+If using `uv`:
+
+```bash
+uv tool install git+https://github.com/knowgyu/contextWhere.git
+contextwhere verify --json
+```
 
 ## Development install
 
@@ -18,7 +36,6 @@ python -m pip install -U pip
 python -m pip install -e . pytest
 pytest -q
 contextwhere verify --json
-contextwhere status --json
 ```
 
 ## First run
@@ -27,56 +44,36 @@ contextwhere status --json
 contextwhere init --json
 contextwhere providers matrix --json
 contextwhere providers health --all --json
-contextwhere ingest --provider mailwhere --fixture tests/fixtures/mailwhere_tasks.json --json
-contextwhere query contextWhere --json
-contextwhere wiki draft --query contextWhere --output .contextwhere/drafts/wiki/latest.json --json
-contextwhere wiki apply .contextwhere/drafts/wiki/latest.json --json
-contextwhere lint --json
-contextwhere capture-session --file tests/fixtures/session.md --json
-contextwhere entities extract --json
-contextwhere entities list --json
-contextwhere tools manifest --json
-contextwhere recall create --name "contextWhere focus" --query contextWhere --json
-contextwhere backup create --output .contextwhere/backups/contextwhere-smoke.zip --json
-contextwhere status --json
+contextwhere daily --json
 ```
+
+`daily` runs init, safe provider ingest, entity extraction, wiki draft, lint, and status. It does not apply wiki drafts automatically.
 
 ## Live provider examples
 
 MailWhere:
 
 ```bash
-contextwhere ingest \
-  --provider mailwhere \
+contextwhere daily \
   --mailwhere-command MailWhere.Cli.exe \
-  --limit 50 \
   --json
 ```
 
 OfficeWhere must be loopback/local:
 
 ```bash
-contextwhere ingest \
-  --provider officewhere \
+contextwhere daily \
   --officewhere-base-url http://127.0.0.1:18765 \
   --query "project name" \
-  --limit 25 \
   --json
 ```
 
-Non-loopback OfficeWhere URLs are rejected as `unsafe_url`. Live ingest returns exit code 2 with `ok:false`, `status:"unavailable"`, and provider details when a live provider is missing or unsafe; fixture ingest remains a local test path.
+Missing providers return structured `status:"unavailable"` entries and are safe to continue. Non-loopback OfficeWhere URLs are rejected as `unsafe_url`.
 
 ## Backup restore smoke
 
-Create a local backup after ingest/wiki updates:
-
 ```bash
 contextwhere backup create --output .contextwhere/backups/contextwhere-$(date +%Y%m%d).zip --json
-```
-
-Restore only into an empty or absent root. This avoids overwriting an existing wiki or SQLite state:
-
-```bash
 contextwhere backup restore .contextwhere/backups/contextwhere-20260703.zip /tmp/contextwhere-restored --json
 contextwhere query contextWhere --root /tmp/contextwhere-restored --json
 ```

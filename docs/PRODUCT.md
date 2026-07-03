@@ -69,6 +69,12 @@ It is not a generic vector database. It separates raw providers, sanitized evide
 - MailWhere and OfficeWhere list live requirements, ingest kinds, and safety boundaries.
 - The matrix is static/read-only and complements live `providers health`.
 
+## 0.8.0 daily runner
+
+- `daily` runs init, read-only provider ingest, entity extraction, wiki draft, lint, and status in one command.
+- Provider unavailable states are safe structured results, not destructive failures.
+- Wiki drafts are created but not applied automatically.
+
 ## Roadmap
 
 1. 0.1.x: strengthen provider compatibility, add scheduled ingest examples, broaden wiki operations with the same typed/audited model.
@@ -77,5 +83,6 @@ It is not a generic vector database. It separates raw providers, sanitized evide
 4. 0.4.0: local recall bundles. 0.4.x: selective local embedding/vector layer for ambiguous recall.
 5. 0.5.0: audited backup/restore foundation.
 6. 0.6.0: operational status command.
-7. 0.7.0: provider compatibility matrix. 0.7.x: migration command and selective local recall.
-8. 1.0: stable local-first context platform with documented provider contracts, release artifacts, and migration policy.
+7. 0.7.0: provider compatibility matrix.
+8. 0.8.0: unattended daily runner. 0.8.x: migration command and selective local recall.
+9. 1.0: stable local-first context platform with documented provider contracts, release artifacts, and migration policy.

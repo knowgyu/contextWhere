@@ -162,6 +162,45 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     return 0 if outcome.ok else 2
 
 
+def run_ingest_step(args: argparse.Namespace, provider: str) -> dict[str, Any]:
+    paths = resolve_paths(args.root)
+    ingest_args = {"fixture": None, "kind": None, **vars(args), "provider": provider}
+    outcome = provider_records(argparse.Namespace(**ingest_args))
+    ids = insert_evidence(paths.db_path, outcome.records) if outcome.ok else []
+    log_ingest(paths.db_path, provider, "daily", outcome.status, {"inserted": len(ids), "unavailable": outcome.unavailable, "details": outcome.details})
+    result: dict[str, Any] = {"provider": provider, "ok": outcome.ok, "status": outcome.status, "inserted": len(ids), "evidence_ids": ids}
+    if outcome.unavailable:
+        result["unavailable"] = outcome.unavailable
+    return result
+
+
+def cmd_daily(args: argparse.Namespace) -> int:
+    paths = resolve_paths(args.root)
+    ensure_dirs(paths)
+    init_db(paths.db_path)
+    steps: list[dict[str, Any]] = [{"step": "init", "ok": True, "db_path": str(paths.db_path)}]
+
+    ingest_results = [run_ingest_step(args, "mailwhere"), run_ingest_step(args, "officewhere")]
+    steps.append({"step": "ingest", "ok": True, "results": ingest_results})
+
+    entity_result = extract_entities(paths.db_path, query=args.query or "", limit=args.limit)
+    steps.append({"step": "entities", "ok": bool(entity_result.get("ok")), "result": entity_result})
+
+    draft_path = create_wiki_draft(paths.db_path, paths.wiki_dir, paths.draft_dir, query=args.query or "", limit=args.limit)
+    steps.append({"step": "wiki_draft", "ok": True, "draft_path": str(draft_path)})
+
+    issues = [issue.to_dict() for issue in lint_wiki(paths.wiki_dir)]
+    lint_ok = not any(i["severity"] == "error" for i in issues)
+    steps.append({"step": "lint", "ok": lint_ok, "issues": issues})
+
+    status = project_status(args.root)
+    steps.append({"step": "status", "ok": bool(status.get("ok")), "result": status})
+
+    payload = {"ok": all(step["ok"] for step in steps), "steps": steps, "note": "wiki drafts are not applied automatically"}
+    emit(payload, args.json)
+    return 0 if payload["ok"] else 2
+
+
 def cmd_query(args: argparse.Namespace) -> int:
     paths = resolve_paths(args.root)
     rows, mode = query_evidence_with_mode(paths.db_path, args.query, limit=args.limit)
@@ -333,6 +372,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--mailwhere-db")
     p.add_argument("--officewhere-base-url")
     p.set_defaults(func=cmd_ingest)
+
+    p = sub.add_parser("daily")
+    add_common(p)
+    p.add_argument("--query", default="recent work")
+    p.add_argument("--limit", type=int, default=50)
+    p.add_argument("--mailwhere-command", default="MailWhere.Cli.exe")
+    p.add_argument("--mailwhere-db")
+    p.add_argument("--officewhere-base-url")
+    p.set_defaults(func=cmd_daily)
 
     p = sub.add_parser("query")
     add_common(p)
