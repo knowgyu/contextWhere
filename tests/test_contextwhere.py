@@ -627,7 +627,7 @@ def test_status_reports_operational_counts(tmp_path, capsys):
     assert run_cli(["status", "--root", str(tmp_path), "--json"]) == 0
     result = json.loads(capsys.readouterr().out)
     assert result["ok"] is True
-    assert result["version"] == "0.6.0"
+    assert result["version"] == "0.7.0"
     assert result["counts"]["evidence"] >= 1
     assert result["counts"]["entities"] >= 1
     assert result["counts"]["recall_bundles"] == 1
@@ -643,3 +643,15 @@ def test_status_missing_root_is_structured_and_non_mutating(tmp_path, capsys):
     assert result["db_exists"] is False
     assert result["wiki_exists"] is False
     assert not root.exists()
+
+
+def test_provider_matrix_documents_safe_provider_contract(capsys):
+    assert run_cli(["providers", "matrix", "--json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is True
+    assert result["format"] == "contextwhere-provider-matrix-v1"
+    providers = {item["provider"]: item for item in result["providers"]}
+    assert providers["mailwhere"]["read_only"] is True
+    assert providers["officewhere"]["read_only"] is True
+    assert providers["mailwhere"]["mutating_actions"] == []
+    assert "non-loopback URLs rejected" in providers["officewhere"]["safety_boundaries"]

@@ -6,7 +6,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
 
 ## 현재 릴리즈
 
-- 최신 로컬 버전: **0.6.0**
+- 최신 로컬 버전: **0.7.0**
 - 공개 원격 저장소: <https://github.com/knowgyu/contextWhere>
 - 기본 브랜치: `main`
 - 기준 태그:
@@ -17,6 +17,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
   - `v0.4.0`: local recall bundles
   - `v0.5.0`: audited local backup and restore foundation
   - `v0.6.0`: operational status command and deployability check
+  - `v0.7.0`: provider compatibility matrix
 
 ## 왜 만드는가
 
@@ -51,6 +52,7 @@ contextWhere는 MailWhere, OfficeWhere, CLI 코딩 에이전트에서 흩어지�
 - `recall create/list/show`: evidence query 결과를 재현 가능한 local recall bundle로 저장.
 - `backup create/restore`: `work_wiki`와 `.contextwhere`를 manifest가 포함된 zip으로 백업하고 빈 target에만 복원.
 - `status`: DB/wiki/ingest/entity/recall/backup/lint 상태를 read-only JSON으로 점검.
+- `providers matrix`: MailWhere/OfficeWhere provider별 live requirement, 안전 경계, ingest kind를 JSON으로 고정.
 - Ubuntu cron/systemd 운영 예제.
 
 ## 빠른 시작
@@ -70,6 +72,7 @@ CLI 확인:
 contextwhere --help
 contextwhere init --json
 contextwhere status --json
+contextwhere providers matrix --json
 contextwhere providers health --all --json
 ```
 
@@ -148,7 +151,8 @@ contextwhere backup restore .contextwhere/backups/contextwhere-20260703.zip /tmp
 - **0.4.0**: 재현 가능한 local recall bundle.
 - **0.5.0**: 감사 가능한 local backup/restore foundation.
 - **0.6.0**: 운영 상태 점검용 `status`와 배포 가능성 체크.
-- **0.6.x 이후**: migration command, provider compatibility matrix, 선택적 local embedding/vector recall.
+- **0.7.0**: provider compatibility matrix.
+- **0.7.x 이후**: migration command, 선택적 local embedding/vector recall.
 - **1.0**: 안정 운영 문서와 릴리즈 절차가 포함된 local-first context platform.
 
 ## 개발/검증 명령

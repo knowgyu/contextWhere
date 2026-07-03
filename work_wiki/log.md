@@ -48,3 +48,9 @@ Initialized contextWhere folder from autoresearch discussion. Copied research re
 - Added read-only `contextwhere status --json` for deployability checks.
 - Verify smoke now includes status after capture/recall workflows.
 - Evidence: `docs/releases/v0.6.0.md`, `src/contextwhere/status.py`, tests under `tests/`.
+
+## 2026-07-03 — contextWhere 0.7.0 provider compatibility matrix
+
+- Added static `contextwhere providers matrix --json` for deployment/provider contracts.
+- Matrix documents MailWhere and OfficeWhere transport, live requirements, ingest kinds, and safety boundaries.
+- Evidence: `docs/releases/v0.7.0.md`, `src/contextwhere/provider_matrix.py`, tests under `tests/`.

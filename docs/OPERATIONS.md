@@ -54,7 +54,17 @@ contextwhere tools call query_evidence --input-json '{"query":"contextWhere","li
 contextwhere tools call entities_list --input-json '{"limit":20}' --json
 ```
 
-0.6.0 gateway는 JSON object 입력만 허용하며, 등록된 safe tool만 실행한다. Provider mutation이나 OS-visible action은 포함하지 않는다.
+0.7.0 gateway는 JSON object 입력만 허용하며, 등록된 safe tool만 실행한다. Provider mutation이나 OS-visible action은 포함하지 않는다.
+
+## Provider compatibility matrix
+
+Use the static matrix before wiring live providers in a new environment:
+
+```bash
+contextwhere providers matrix --json
+```
+
+The matrix records each provider transport, live requirement, ingest kinds, read-only promise, and blocked mutating actions. It is intentionally static so deployment docs and agent tooling can depend on it without probing live providers.
 
 ## Status checks
 

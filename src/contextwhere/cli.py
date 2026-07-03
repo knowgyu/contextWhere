@@ -22,6 +22,7 @@ from .tools import call_tool, manifest as tools_manifest, parse_input as parse_t
 from .recall import create_bundle, list_bundles, show_bundle
 from .backup import create_backup, restore_backup
 from .status import project_status
+from .provider_matrix import provider_matrix
 
 
 def emit(data: Any, as_json: bool = False) -> None:
@@ -92,6 +93,9 @@ def outcome_from_provider_result(result: ProviderResult, kind: str) -> IngestOut
 
 
 def cmd_providers(args: argparse.Namespace) -> int:
+    if args.action == "matrix":
+        emit(provider_matrix(), args.json)
+        return 0
     results = []
     providers = [args.provider] if (args.provider != "all" and not getattr(args, "all", False)) else ["mailwhere", "officewhere"]
     for name in providers:
@@ -310,7 +314,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("providers")
     add_common(p)
-    p.add_argument("action", choices=["health", "manifest"])
+    p.add_argument("action", choices=["health", "manifest", "matrix"])
     p.add_argument("--provider", choices=["all", "mailwhere", "officewhere"], default="all")
     p.add_argument("--all", action="store_true", help="Check all providers (compatibility alias)")
     p.add_argument("--mailwhere-command", default="MailWhere.Cli.exe")

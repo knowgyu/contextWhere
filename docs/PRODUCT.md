@@ -63,6 +63,12 @@ It is not a generic vector database. It separates raw providers, sanitized evide
 - It reports DB/wiki presence, latest ingest, counts, backup count, and lint health.
 - The command is safe for missing roots and does not initialize or mutate state.
 
+## 0.7.0 provider compatibility matrix
+
+- `providers matrix` exposes provider contracts as CLI-readable JSON.
+- MailWhere and OfficeWhere list live requirements, ingest kinds, and safety boundaries.
+- The matrix is static/read-only and complements live `providers health`.
+
 ## Roadmap
 
 1. 0.1.x: strengthen provider compatibility, add scheduled ingest examples, broaden wiki operations with the same typed/audited model.
@@ -70,5 +76,6 @@ It is not a generic vector database. It separates raw providers, sanitized evide
 3. 0.3.0: JSON CLI tool gateway. 0.3.x: MCP server and long-running agent tool surfaces.
 4. 0.4.0: local recall bundles. 0.4.x: selective local embedding/vector layer for ambiguous recall.
 5. 0.5.0: audited backup/restore foundation.
-6. 0.6.0: operational status command. 0.6.x: migration command and provider compatibility matrix.
-7. 1.0: stable local-first context platform with documented provider contracts, release artifacts, and migration policy.
+6. 0.6.0: operational status command.
+7. 0.7.0: provider compatibility matrix. 0.7.x: migration command and selective local recall.
+8. 1.0: stable local-first context platform with documented provider contracts, release artifacts, and migration policy.
