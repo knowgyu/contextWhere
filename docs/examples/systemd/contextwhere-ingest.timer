@@ -1,8 +1,9 @@
 [Unit]
-Description=Run contextWhere ingest daily
+Description=Run contextWhere daily
 
 [Timer]
-OnCalendar=*-*-* 08:15:00
+OnBootSec=5min
+OnUnitActiveSec=15m
 Persistent=true
 
 [Install]

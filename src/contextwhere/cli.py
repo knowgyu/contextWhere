@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import platform
+import shlex
+import subprocess
 import sys
 import zipfile
 from pathlib import Path
@@ -201,6 +204,97 @@ def cmd_daily(args: argparse.Namespace) -> int:
     return 0 if payload["ok"] else 2
 
 
+def autostart_command(root: Path) -> list[str]:
+    return [sys.executable, "-m", "contextwhere", "daily", "--root", str(root), "--json"]
+
+
+def autostart_plan(root: Path, interval: str) -> dict[str, Any]:
+    system = platform.system().lower()
+    command = autostart_command(root)
+    if system == "windows":
+        task_name = "contextWhereDaily"
+        return {
+            "platform": "windows",
+            "task_name": task_name,
+            "command": command,
+            "install_command": [
+                "schtasks",
+                "/Create",
+                "/TN",
+                task_name,
+                "/SC",
+                "MINUTE",
+                "/MO",
+                str(max(1, int(interval.rstrip("m")) if interval.endswith("m") else 15)),
+                "/TR",
+                subprocess.list2cmdline(command),
+                "/F",
+            ],
+        }
+    service = """[Unit]
+Description=contextWhere daily run
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory={root}
+ExecStart={cmd}
+""".format(root=root, cmd=" ".join(shlex.quote(part) for part in command))
+    timer = """[Unit]
+Description=Run contextWhere daily
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec={interval}
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+""".format(interval=interval)
+    config_dir = Path.home() / ".config" / "systemd" / "user"
+    return {
+        "platform": "systemd-user",
+        "service_path": str(config_dir / "contextwhere-daily.service"),
+        "timer_path": str(config_dir / "contextwhere-daily.timer"),
+        "service": service,
+        "timer": timer,
+        "enable_command": ["systemctl", "--user", "enable", "--now", "contextwhere-daily.timer"],
+    }
+
+
+def cmd_autostart(args: argparse.Namespace) -> int:
+    paths = resolve_paths(args.root)
+    plan = autostart_plan(paths.root, args.interval)
+    if args.autostart_command == "plan" or args.dry_run:
+        emit({"ok": True, "plan": plan}, args.json)
+        return 0
+
+    if not args.yes:
+        if not sys.stdin.isatty():
+            emit({"ok": False, "error": "confirmation required; rerun with --yes or use autostart plan"}, args.json)
+            return 2
+        answer = input("Install contextWhere autostart for this user? [y/N] ").strip().lower()
+        if answer not in {"y", "yes"}:
+            emit({"ok": False, "cancelled": True}, args.json)
+            return 2
+
+    system = plan["platform"]
+    try:
+        if system == "windows":
+            subprocess.run(plan["install_command"], check=True)
+        else:
+            Path(plan["service_path"]).parent.mkdir(parents=True, exist_ok=True)
+            Path(plan["service_path"]).write_text(plan["service"], encoding="utf-8")
+            Path(plan["timer_path"]).write_text(plan["timer"], encoding="utf-8")
+            subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
+            subprocess.run(plan["enable_command"], check=True)
+    except (OSError, subprocess.CalledProcessError) as exc:
+        emit({"ok": False, "error": f"autostart install failed: {type(exc).__name__}: {exc}", "plan": plan}, args.json)
+        return 2
+    emit({"ok": True, "installed": True, "plan": plan}, args.json)
+    return 0
+
+
 def cmd_query(args: argparse.Namespace) -> int:
     paths = resolve_paths(args.root)
     rows, mode = query_evidence_with_mode(paths.db_path, args.query, limit=args.limit)
@@ -381,6 +475,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--mailwhere-db")
     p.add_argument("--officewhere-base-url")
     p.set_defaults(func=cmd_daily)
+
+    autostart = sub.add_parser("autostart")
+    add_common(autostart)
+    autostart_sub = autostart.add_subparsers(dest="autostart_command", required=True)
+    for action in ("plan", "install"):
+        p = autostart_sub.add_parser(action)
+        add_common(p)
+        p.add_argument("--interval", default="15m")
+        p.add_argument("--yes", action="store_true")
+        p.add_argument("--dry-run", action="store_true")
+        p.set_defaults(func=cmd_autostart)
 
     p = sub.add_parser("query")
     add_common(p)

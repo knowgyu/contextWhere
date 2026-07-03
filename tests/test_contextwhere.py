@@ -618,6 +618,23 @@ def test_backup_restore_rejects_path_traversal_member(tmp_path, capsys):
 
 
 
+
+def test_autostart_plan_is_non_mutating(tmp_path, capsys):
+    assert run_cli(["autostart", "plan", "--root", str(tmp_path), "--json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is True
+    plan = result["plan"]
+    assert "contextwhere" in json.dumps(plan).lower()
+    assert "daily" in json.dumps(plan).lower()
+    assert not (Path.home() / ".config" / "systemd" / "user" / "contextwhere-daily.timer").exists() or plan["platform"] == "systemd-user"
+
+
+def test_autostart_install_requires_confirmation_noninteractive(tmp_path, capsys):
+    assert run_cli(["autostart", "install", "--root", str(tmp_path), "--json"]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is False
+    assert "confirmation required" in result["error"]
+
 def test_daily_runs_safe_unattended_cycle(tmp_path, capsys):
     write_wiki(tmp_path)
     assert run_cli([

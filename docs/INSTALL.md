@@ -1,6 +1,6 @@
 # contextWhere install and quick start
 
-contextWhere 0.8.0 is a local-first Python/SQLite CLI. Provider ingest is read-only; wiki writes happen only through audited `wiki apply` drafts.
+contextWhere 0.9.0 is a local-first Python/SQLite CLI. Provider ingest is read-only; wiki writes happen only through audited `wiki apply` drafts.
 
 ## Requirements
 
@@ -45,9 +45,19 @@ contextwhere init --json
 contextwhere providers matrix --json
 contextwhere providers health --all --json
 contextwhere daily --json
+contextwhere autostart plan --json
 ```
 
 `daily` runs init, safe provider ingest, entity extraction, wiki draft, lint, and status. It does not apply wiki drafts automatically.
+
+To keep it running without manual commands, inspect the plan and install user-level autostart once:
+
+```bash
+contextwhere autostart plan --json
+contextwhere autostart install
+```
+
+`install` asks for Y/N unless `--yes` is passed.
 
 ## Live provider examples
 

@@ -75,6 +75,12 @@ It is not a generic vector database. It separates raw providers, sanitized evide
 - Provider unavailable states are safe structured results, not destructive failures.
 - Wiki drafts are created but not applied automatically.
 
+## 0.9.0 autostart installer
+
+- `autostart plan` shows the OS scheduler integration without mutating user state.
+- `autostart install` asks Y/N before installing a user-level systemd timer or Windows scheduled task.
+- The scheduled job runs `daily`; no custom long-running daemon is owned by contextWhere.
+
 ## Roadmap
 
 1. 0.1.x: strengthen provider compatibility, add scheduled ingest examples, broaden wiki operations with the same typed/audited model.
@@ -84,5 +90,6 @@ It is not a generic vector database. It separates raw providers, sanitized evide
 5. 0.5.0: audited backup/restore foundation.
 6. 0.6.0: operational status command.
 7. 0.7.0: provider compatibility matrix.
-8. 0.8.0: unattended daily runner. 0.8.x: migration command and selective local recall.
-9. 1.0: stable local-first context platform with documented provider contracts, release artifacts, and migration policy.
+8. 0.8.0: unattended daily runner.
+9. 0.9.0: user-level autostart installer. 0.9.x: migration command and selective local recall.
+10. 1.0: stable local-first context platform with documented provider contracts, release artifacts, and migration policy.

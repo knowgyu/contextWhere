@@ -1,4 +1,4 @@
-# contextWhere cron template. Adjust path, venv, and log paths before installing.
-15 8 * * * cd /opt/contextWhere && . .venv/bin/activate && contextwhere ingest --provider mailwhere --limit 100 --json >> logs/contextwhere-ingest.log 2>&1
-20 8 * * * cd /opt/contextWhere && . .venv/bin/activate && contextwhere ingest --provider officewhere --query "recent work" --limit 100 --json >> logs/contextwhere-ingest.log 2>&1
-25 8 * * * cd /opt/contextWhere && . .venv/bin/activate && contextwhere lint --json >> logs/contextwhere-lint.log 2>&1
+# contextWhere fallback cron example if systemd user timers are unavailable.
+# Prefer: contextwhere autostart install
+
+*/15 * * * * cd /opt/contextWhere && contextwhere daily --json >> logs/contextwhere-daily.log 2>&1
