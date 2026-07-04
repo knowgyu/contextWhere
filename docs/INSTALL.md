@@ -1,6 +1,6 @@
 # contextWhere install and quick start
 
-contextWhere 0.11.0 is a local-first Python/SQLite CLI and workspace context OS slice. Provider ingest is read-only; wiki writes happen only through audited `wiki apply` drafts.
+contextWhere 0.12.0 is a local-first Python/SQLite CLI and workspace context OS slice. Provider ingest is read-only; wiki writes happen only through audited `wiki apply` drafts.
 
 ## Requirements
 
@@ -87,3 +87,11 @@ contextwhere backup create --output .contextwhere/backups/contextwhere-$(date +%
 contextwhere backup restore .contextwhere/backups/contextwhere-20260703.zip /tmp/contextwhere-restored --json
 contextwhere query contextWhere --root /tmp/contextwhere-restored --json
 ```
+
+## Routine maintenance
+
+```bash
+contextwhere maintain --json
+```
+
+This is local-only. Missing `work_wiki`, `.git`, or `.omx` is safe; broken git is a warning unless `--strict-git` is set.

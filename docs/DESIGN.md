@@ -157,11 +157,12 @@ The user should not need to manually run daily note maintenance. Scheduled polli
 
 For contextWhere, the immediate choice remains simpler: source locators + evidence ledger + Markdown wiki + context packs first; graph/vector later only when relationships and recall problems justify it.
 
-## v0.11.0 implementation note
+## v0.12.0 implementation note
 
 Implemented scope-first runtime semantics:
 
 - `contextwhere context pack` builds small source-backed bundles with tenant/scope filters, source locators, included reasons, and omitted-context counts.
 - `contextwhere capture-local --git --omx` captures read-only local git and `.omx` evidence with repo scope metadata.
+- `contextwhere maintain` is the manual automation slice before any daemon: it initializes local storage, captures local evidence, builds a scoped context pack, and reports wiki lint/status without mutating provider sources.
 - Provider matrix now describes agent-session, repo-state, git, GitHub, Jenkins/deploy, MailWhere, OfficeWhere, and manual/wiki boundaries.
 - Graph/vector remain deferred until scoped packs are not enough.

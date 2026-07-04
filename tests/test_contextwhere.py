@@ -415,7 +415,7 @@ def test_verify_command_runs_smoke(capsys):
     out = capsys.readouterr().out
     data = json.loads(out)
     assert data["ok"] is True
-    assert [step["name"] for step in data["steps"]] == ["init", "ingest", "query", "context-pack", "wiki-draft-apply", "lint", "entities-extract", "recall-bundle", "capture-session", "capture-local", "status"]
+    assert [step["name"] for step in data["steps"]] == ["init", "ingest", "query", "context-pack", "wiki-draft-apply", "lint", "entities-extract", "recall-bundle", "capture-session", "capture-local", "maintain", "status"]
 
 
 def test_verify_command_creates_child_under_named_root(tmp_path, capsys):
@@ -890,3 +890,28 @@ def test_capture_local_git_failure_is_reported_not_silent(tmp_path, capsys):
         row = conn.execute("select provider, kind, metadata from evidence where provider='git'").fetchone()
     assert row["kind"] == "unavailable"
     assert json.loads(row["metadata"])["returncode"] != 0
+
+
+def test_maintain_fresh_root_warns_missing_wiki(tmp_path, capsys):
+    assert run_cli(["maintain", "--root", str(tmp_path), "--json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is True
+    steps = {step["name"]: step for step in result["steps"]}
+    assert steps["capture-local"]["status"] == "ok"
+    assert steps["context-pack"]["status"] == "ok"
+    assert steps["lint"]["status"] == "warning"
+    assert result["context_pack"]["scope_filter"] == f"repo:{tmp_path.name}"
+
+
+def test_maintain_invalid_git_warns_by_default_and_strict_fails(tmp_path, capsys):
+    (tmp_path / ".git").write_text("not a git dir", encoding="utf-8")
+    assert run_cli(["maintain", "--root", str(tmp_path), "--json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    steps = {step["name"]: step for step in result["steps"]}
+    assert steps["capture-local"]["status"] == "unavailable"
+    paths = resolve_paths(tmp_path)
+    with connect(paths.db_path) as conn:
+        row = conn.execute("select kind from evidence where provider='git'").fetchone()
+    assert row["kind"] == "unavailable"
+    assert run_cli(["maintain", "--root", str(tmp_path), "--strict-git", "--json"]) == 2
+    assert json.loads(capsys.readouterr().out)["ok"] is False

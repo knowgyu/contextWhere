@@ -153,6 +153,15 @@ def run_verify(root: Path | None = None, keep: bool = False) -> dict:
             raise RuntimeError("local .omx capture inserted no evidence")
         return ids[0]
 
+    def maintain_step() -> str:
+        paths = resolve_paths(work_root)
+        pack = build_context_pack(paths.db_path, task="verify maintain", query="contextWhere", scope="repo:contextwhere-verify", max_items=5)
+        issues = [issue.to_dict() for issue in lint_wiki(paths.wiki_dir)] if paths.wiki_dir.exists() else []
+        status = project_status(work_root)
+        if not status.get("db_exists"):
+            raise RuntimeError("maintain status missing db")
+        return f"pack={pack['manifest']['pack_id']}; issues={len(issues)}"
+
     def status_step() -> str:
         result = project_status(work_root)
         if not result.get("ok"):
@@ -171,6 +180,7 @@ def run_verify(root: Path | None = None, keep: bool = False) -> dict:
             ("recall-bundle", recall_step),
             ("capture-session", capture_step),
             ("capture-local", capture_local_step),
+            ("maintain", maintain_step),
             ("status", status_step),
         ]:
             run_step(steps, name, fn)

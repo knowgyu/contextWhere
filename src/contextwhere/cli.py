@@ -431,6 +431,43 @@ def cmd_capture_local(args: argparse.Namespace) -> int:
     return 0 if status == "ok" else 2
 
 
+def _step(name: str, ok: bool, status: str, detail: str = "") -> dict[str, Any]:
+    return {"name": name, "ok": ok, "status": status, "detail": detail}
+
+
+def cmd_maintain(args: argparse.Namespace) -> int:
+    paths = resolve_paths(args.root)
+    ensure_dirs(paths)
+    init_db(paths.db_path)
+    steps: list[dict[str, Any]] = []
+
+    records = capture_omx(paths.root, limit=args.limit) + capture_git(paths.root, limit=args.limit)
+    stamp_routing(records, paths.root, "local")
+    ids = insert_evidence(paths.db_path, records)
+    git_failed = any(record.provider == "git" and record.kind == "unavailable" for record in records)
+    capture_ok = not (git_failed and args.strict_git)
+    steps.append(_step("capture-local", capture_ok, "unavailable" if git_failed else "ok", f"inserted={len(ids)}"))
+    log_ingest(paths.db_path, "local", "maintain", "unavailable" if git_failed else "ok", {"inserted": len(ids), "strict_git": args.strict_git})
+
+    pack = build_context_pack(paths.db_path, task=args.task or args.query, query=args.query, scope=repo_scope(paths.root), max_items=args.max_items)
+    steps.append(_step("context-pack", True, "ok", pack["manifest"]["pack_id"]))
+
+    if paths.wiki_dir.exists():
+        issues = [issue.to_dict() for issue in lint_wiki(paths.wiki_dir)]
+        errors = [issue for issue in issues if issue.get("severity") == "error"]
+        steps.append(_step("lint", not errors, "error" if errors else "ok", f"issues={len(issues)}"))
+    else:
+        steps.append(_step("lint", True, "warning", "work_wiki missing"))
+
+    status = project_status(paths.root)
+    steps.append(_step("status", True, "ok", f"evidence={status.get('counts', {}).get('evidence', 0)}"))
+
+    ok = all(step["ok"] for step in steps)
+    result = {"ok": ok, "status": "ok" if ok else "unavailable", "steps": steps, "evidence_ids": ids, "context_pack": pack["manifest"], "status_summary": status}
+    emit(result, args.json)
+    return 0 if ok else 2
+
+
 def cmd_context(args: argparse.Namespace) -> int:
     if args.context_command != "pack":
         raise SystemExit(f"unsupported context command: {args.context_command}")
@@ -664,6 +701,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--include-history", action="store_true")
     p.add_argument("--format", choices=["json", "markdown"], default="json")
     p.set_defaults(func=cmd_context)
+
+    p = sub.add_parser("maintain")
+    add_common(p)
+    p.add_argument("--query", default="contextWhere")
+    p.add_argument("--task", default="routine maintenance")
+    p.add_argument("--limit", type=int, default=20)
+    p.add_argument("--max-items", type=int, default=20)
+    p.add_argument("--strict-git", action="store_true", help="Return non-zero if git capture reports unavailable")
+    p.set_defaults(func=cmd_maintain)
 
     p = sub.add_parser("verify")
     p.add_argument("--json", action="store_true")
