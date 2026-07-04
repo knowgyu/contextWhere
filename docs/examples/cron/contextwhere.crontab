@@ -1,4 +1,4 @@
 # contextWhere fallback cron example if systemd user timers are unavailable.
 # Prefer: contextwhere autostart install
 
-*/15 * * * * cd /opt/contextWhere && contextwhere run --json >> logs/contextwhere-daily.log 2>&1
+*/15 * * * * cd /opt/contextWhere && contextwhere maintain --json >> logs/contextwhere-maintain.log 2>&1

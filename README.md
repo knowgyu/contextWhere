@@ -6,7 +6,7 @@ MailWhere와 OfficeWhere는 중요한 provider지만, 제품의 전체 경계는
 
 ## 현재 릴리즈
 
-- 최신 로컬 버전: **0.13.0**
+- 최신 로컬 버전: **0.14.0**
 - 원격 저장소: <https://github.com/knowgyu/contextWhere>
 - 기본 브랜치: `main`
 
@@ -22,7 +22,7 @@ MailWhere와 OfficeWhere는 중요한 provider지만, 제품의 전체 경계는
 - backup/restore
 - status/verify
 - provider matrix
-- `run`/`daily` scheduler-friendly runner
+- `run`/`maintain` scheduler-friendly runner
 - autostart plan/install flow
 
 ## 왜 만드는가
@@ -56,7 +56,7 @@ contextwhere init --json
 contextwhere status --json
 contextwhere providers matrix --json
 contextwhere providers health --all --json
-contextwhere run --json
+contextwhere maintain --json
 contextwhere autostart plan --json
 ```
 
@@ -79,7 +79,7 @@ contextwhere status --json
 현재 `run`은 init, MailWhere ingest, optional OfficeWhere query, entity extraction, wiki draft, lint, status를 한 번에 수행한다.
 
 ```bash
-contextwhere run --json
+contextwhere maintain --json
 contextwhere run --officewhere-query "explicit project or file hint" --json
 ```
 
@@ -107,7 +107,7 @@ OfficeWhere는 기본 sweep 대상이 아니다. 메일 file-link나 명시 quer
 
 ## 다음 방향
 
-v0.13.0은 evidence/wiki/automation 기반 위에 **workspace context OS semantics**를 올렸다.
+v0.14.0은 evidence/wiki/automation 기반 위에 **workspace context OS semantics**를 올렸다.
 
 - tenant/scope/source-locator vocabulary
 - provider registry for agent sessions, repo/git/GitHub, Jenkins/deploy, MailWhere, OfficeWhere
@@ -117,7 +117,7 @@ v0.13.0은 evidence/wiki/automation 기반 위에 **workspace context OS semanti
 
 자세한 실행 계획은 `.omx/plans/prd-contextwhere-workspace-context-os-*.md`를 본다.
 
-## v0.13.0 implementation note
+## v0.14.0 implementation note
 
 Implemented scope-first runtime semantics:
 

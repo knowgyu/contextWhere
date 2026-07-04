@@ -641,8 +641,12 @@ def test_autostart_plan_is_non_mutating(tmp_path, capsys):
     assert result["ok"] is True
     plan = result["plan"]
     assert "contextwhere" in json.dumps(plan).lower()
-    assert "daily" in json.dumps(plan).lower()
-    assert not (Path.home() / ".config" / "systemd" / "user" / "contextwhere-daily.timer").exists() or plan["platform"] == "systemd-user"
+    assert "maintain" in json.dumps(plan).lower()
+    text = json.dumps(plan).lower()
+    assert "maintain" in text
+    assert " run " not in text
+    assert "contextwhere run" not in text
+    assert not (Path.home() / ".config" / "systemd" / "user" / "contextwhere-maintain.timer").exists() or plan["platform"] == "systemd-user"
 
 
 def test_autostart_install_requires_confirmation_noninteractive(tmp_path, capsys):

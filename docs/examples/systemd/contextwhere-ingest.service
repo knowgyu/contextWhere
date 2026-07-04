@@ -1,8 +1,8 @@
 [Unit]
-Description=contextWhere daily run
+Description=contextWhere maintenance run
 After=network-online.target
 
 [Service]
 Type=oneshot
 WorkingDirectory=/opt/contextWhere
-ExecStart=/opt/contextWhere/.venv/bin/contextwhere run --json
+ExecStart=/opt/contextWhere/.venv/bin/contextwhere maintain --json

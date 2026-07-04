@@ -20,7 +20,7 @@ It is not a generic vector database, not a MailWhere/OfficeWhere-only app, and n
 - **Automation-first**: capture, draft, lint, and pack generation should run with minimal user babysitting.
 - **Action-safe**: opening mail/docs, replying, moving, deleting, reindexing, or triggering deploys requires explicit approval.
 
-## Current foundation through v0.13.0
+## Current foundation through v0.14.0
 
 - Python/SQLite CLI with local evidence ledger.
 - MailWhere/OfficeWhere read-only adapters and provider matrix.
@@ -68,7 +68,7 @@ It is not a generic vector database, not a MailWhere/OfficeWhere-only app, and n
 - **Agent sessions**: first-class; summarize decisions, constraints, changed files, verification, and follow-ups.
 - **Git/GitHub/Jenkins**: first-class; use read-only evidence by default, require approval for mutating actions.
 
-## v0.13.0 implementation note
+## v0.14.0 implementation note
 
 Implemented scope-first runtime semantics:
 

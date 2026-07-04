@@ -1,5 +1,5 @@
 [Unit]
-Description=Run contextWhere daily
+Description=Run contextWhere maintenance
 
 [Timer]
 OnBootSec=5min

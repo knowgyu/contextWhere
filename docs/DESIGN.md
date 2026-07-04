@@ -157,7 +157,7 @@ The user should not need to manually run daily note maintenance. Scheduled polli
 
 For contextWhere, the immediate choice remains simpler: source locators + evidence ledger + Markdown wiki + context packs first; graph/vector later only when relationships and recall problems justify it.
 
-## v0.13.0 implementation note
+## v0.14.0 implementation note
 
 Implemented scope-first runtime semantics:
 

@@ -289,14 +289,14 @@ def cmd_daily(args: argparse.Namespace) -> int:
 
 
 def autostart_command(root: Path) -> list[str]:
-    return [sys.executable, "-m", "contextwhere", "run", "--root", str(root), "--json"]
+    return [sys.executable, "-m", "contextwhere", "maintain", "--root", str(root), "--json"]
 
 
 def autostart_plan(root: Path, interval: str) -> dict[str, Any]:
     system = platform.system().lower()
     command = autostart_command(root)
     if system == "windows":
-        task_name = "contextWhereDaily"
+        task_name = "contextWhereMaintain"
         return {
             "platform": "windows",
             "task_name": task_name,
@@ -316,7 +316,7 @@ def autostart_plan(root: Path, interval: str) -> dict[str, Any]:
             ],
         }
     service = """[Unit]
-Description=contextWhere daily run
+Description=contextWhere maintenance run
 After=network-online.target
 
 [Service]
@@ -325,7 +325,7 @@ WorkingDirectory={root}
 ExecStart={cmd}
 """.format(root=root, cmd=" ".join(shlex.quote(part) for part in command))
     timer = """[Unit]
-Description=Run contextWhere daily
+Description=Run contextWhere maintenance
 
 [Timer]
 OnBootSec=5min
@@ -338,11 +338,11 @@ WantedBy=timers.target
     config_dir = Path.home() / ".config" / "systemd" / "user"
     return {
         "platform": "systemd-user",
-        "service_path": str(config_dir / "contextwhere-daily.service"),
-        "timer_path": str(config_dir / "contextwhere-daily.timer"),
+        "service_path": str(config_dir / "contextwhere-maintain.service"),
+        "timer_path": str(config_dir / "contextwhere-maintain.timer"),
         "service": service,
         "timer": timer,
-        "enable_command": ["systemctl", "--user", "enable", "--now", "contextwhere-daily.timer"],
+        "enable_command": ["systemctl", "--user", "enable", "--now", "contextwhere-maintain.timer"],
     }
 
 
