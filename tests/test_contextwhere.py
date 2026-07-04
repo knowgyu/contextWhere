@@ -415,7 +415,7 @@ def test_verify_command_runs_smoke(capsys):
     out = capsys.readouterr().out
     data = json.loads(out)
     assert data["ok"] is True
-    assert [step["name"] for step in data["steps"]] == ["init", "ingest", "query", "context-pack", "wiki-draft-apply", "lint", "entities-extract", "recall-bundle", "capture-session", "capture-local", "maintain", "status"]
+    assert [step["name"] for step in data["steps"]] == ["init", "ingest", "query", "evidence-show", "context-pack", "wiki-draft-apply", "lint", "entities-extract", "recall-bundle", "capture-session", "capture-local", "maintain", "status"]
 
 
 def test_verify_command_creates_child_under_named_root(tmp_path, capsys):
@@ -915,3 +915,38 @@ def test_maintain_invalid_git_warns_by_default_and_strict_fails(tmp_path, capsys
     assert row["kind"] == "unavailable"
     assert run_cli(["maintain", "--root", str(tmp_path), "--strict-git", "--json"]) == 2
     assert json.loads(capsys.readouterr().out)["ok"] is False
+
+
+def test_evidence_show_by_id_and_source_locator(tmp_path, capsys):
+    write_wiki(tmp_path)
+    assert run_cli(["init", "--root", str(tmp_path)]) == 0
+    assert run_cli(["ingest", "--provider", "mailwhere", "--fixture", str(ROOT_FIXTURES / "mailwhere_tasks.json"), "--root", str(tmp_path), "--json"]) == 0
+    capsys.readouterr()
+    paths = resolve_paths(tmp_path)
+    with connect(paths.db_path) as conn:
+        row = conn.execute("select evidence_id, metadata from evidence where provider='mailwhere' and kind='task' limit 1").fetchone()
+    locator = json.loads(row["metadata"])["source_locator"]
+    assert run_cli(["evidence", "show", row["evidence_id"], "--root", str(tmp_path), "--json"]) == 0
+    by_id = json.loads(capsys.readouterr().out)
+    assert by_id["ok"] is True
+    assert by_id["evidence"]["evidence_id"] == row["evidence_id"]
+    assert by_id["evidence"]["metadata"]["source_locator"] == locator
+    assert run_cli(["evidence", "show", "--source-locator", locator, "--root", str(tmp_path), "--json"]) == 0
+    by_locator = json.loads(capsys.readouterr().out)
+    assert by_locator["evidence"]["evidence_id"] == row["evidence_id"]
+
+
+def test_evidence_show_missing_returns_error(tmp_path, capsys):
+    assert run_cli(["init", "--root", str(tmp_path)]) == 0
+    capsys.readouterr()
+    assert run_cli(["evidence", "show", "missing", "--root", str(tmp_path), "--json"]) == 2
+    assert json.loads(capsys.readouterr().out)["ok"] is False
+
+
+def test_evidence_show_requires_selector(tmp_path, capsys):
+    assert run_cli(["init", "--root", str(tmp_path)]) == 0
+    capsys.readouterr()
+    assert run_cli(["evidence", "show", "--root", str(tmp_path), "--json"]) == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is False
+    assert "required" in result["error"]

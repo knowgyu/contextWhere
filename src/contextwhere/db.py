@@ -188,3 +188,14 @@ def query_evidence_with_mode(db_path: Path, query: str, limit: int = 20) -> tupl
 def query_evidence(db_path: Path, query: str, limit: int = 20) -> list[dict]:
     rows, _mode = query_evidence_with_mode(db_path, query, limit)
     return rows
+
+
+def get_evidence(db_path: Path, evidence_id: str | None = None, source_locator: str | None = None) -> dict | None:
+    if not evidence_id and not source_locator:
+        raise ValueError("evidence_id or source_locator required")
+    with connect(db_path) as conn:
+        if evidence_id:
+            row = conn.execute("SELECT * FROM evidence WHERE evidence_id = ?", (evidence_id,)).fetchone()
+        else:
+            row = conn.execute("SELECT * FROM evidence WHERE json_extract(metadata, '$.source_locator') = ?", (source_locator,)).fetchone()
+    return dict(row) if row else None

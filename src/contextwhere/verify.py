@@ -9,7 +9,7 @@ from typing import Callable
 from .capture import capture_session_text
 from .config import resolve_paths
 from .context_pack import build_context_pack
-from .db import init_db, insert_evidence, query_evidence_with_mode
+from .db import get_evidence, init_db, insert_evidence, query_evidence_with_mode
 from .entities import extract_entities, list_entities
 from .local_capture import capture_omx
 from .recall import create_bundle, list_bundles
@@ -98,6 +98,12 @@ def run_verify(root: Path | None = None, keep: bool = False) -> dict:
             raise RuntimeError("query returned no rows")
         return mode
 
+    def evidence_show_step() -> str:
+        row = get_evidence(resolve_paths(work_root).db_path, "verify:task:39797ed9d01e")
+        if not row:
+            raise RuntimeError("evidence show missing inserted fixture")
+        return row["evidence_id"]
+
     def context_pack_step() -> str:
         pack = build_context_pack(resolve_paths(work_root).db_path, task="verify contextWhere", query="contextWhere", scope="repo:contextwhere-verify", max_items=5)
         if not pack["items"] or not pack["manifest"]["included"]:
@@ -173,6 +179,7 @@ def run_verify(root: Path | None = None, keep: bool = False) -> dict:
             ("init", init_step),
             ("ingest", ingest_step),
             ("query", query_step),
+            ("evidence-show", evidence_show_step),
             ("context-pack", context_pack_step),
             ("wiki-draft-apply", wiki_step),
             ("lint", lint_step),

@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 
 from .capture import capture_session_file, capture_session_text
 from .config import ensure_dirs, resolve_paths
-from .db import init_db, insert_evidence, log_ingest, query_evidence_with_mode
+from .db import get_evidence, init_db, insert_evidence, log_ingest, query_evidence_with_mode
 from .providers.base import ProviderResult, load_fixture_records
 from .providers.mailwhere import MailWhereProvider
 from .providers.officewhere import OfficeWhereProvider
@@ -435,6 +435,34 @@ def _step(name: str, ok: bool, status: str, detail: str = "") -> dict[str, Any]:
     return {"name": name, "ok": ok, "status": status, "detail": detail}
 
 
+def _decode_row_json(row: dict[str, Any]) -> dict[str, Any]:
+    for key in ("metadata", "omitted_fields"):
+        try:
+            row[key] = json.loads(row.get(key) or ("[]" if key == "omitted_fields" else "{}"))
+        except (TypeError, json.JSONDecodeError):
+            row[key] = [] if key == "omitted_fields" else {}
+    return row
+
+
+def cmd_evidence(args: argparse.Namespace) -> int:
+    if args.evidence_command != "show":
+        raise SystemExit(f"unsupported evidence command: {args.evidence_command}")
+    paths = resolve_paths(args.root)
+    if not paths.db_path.exists():
+        emit({"ok": False, "error": "contextWhere database not initialized"}, args.json)
+        return 2
+    if not args.evidence_id and not args.source_locator:
+        emit({"ok": False, "error": "evidence_id or --source-locator required"}, args.json)
+        return 2
+    row = get_evidence(paths.db_path, args.evidence_id, args.source_locator)
+    if not row:
+        emit({"ok": False, "error": "evidence not found"}, args.json)
+        return 2
+    result = {"ok": True, "evidence": _decode_row_json(row)}
+    emit(result, args.json)
+    return 0
+
+
 def cmd_maintain(args: argparse.Namespace) -> int:
     paths = resolve_paths(args.root)
     ensure_dirs(paths)
@@ -701,6 +729,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--include-history", action="store_true")
     p.add_argument("--format", choices=["json", "markdown"], default="json")
     p.set_defaults(func=cmd_context)
+
+    evidence = sub.add_parser("evidence")
+    add_common(evidence)
+    evidence_sub = evidence.add_subparsers(dest="evidence_command", required=True)
+    p = evidence_sub.add_parser("show")
+    add_common(p)
+    p.add_argument("evidence_id", nargs="?")
+    p.add_argument("--source-locator")
+    p.set_defaults(func=cmd_evidence)
 
     p = sub.add_parser("maintain")
     add_common(p)
