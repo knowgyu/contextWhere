@@ -137,3 +137,19 @@ contextwhere evidence show --source-locator <locator> --json
 ```
 
 This reads sanitized local evidence rows only; provider rehydration remains explicit future work.
+
+## Return-to-work briefing
+
+Use a thin JSON manifest to ingest a chosen absence period and generate source-backed drafts:
+
+```bash
+contextwhere return-to-work ingest --batch ./return-to-work.json --json
+contextwhere return-to-work brief --batch-id 2026-07-return --json
+```
+
+- Manifest items are `mailwhere_export_json`, `paste_text`, or `document`; v1 documents are limited to `.txt` and `.md`.
+- Outlook COM remains inside MailWhere. contextWhere consumes MailWhere export JSON and never calls COM directly.
+- Default retention is locator/hash provenance. `--retain-raw` explicitly copies only user-supplied files to `.contextwhere/return-to-work/raw/<batch_id>/`.
+- Briefs are stable draft artifacts at `.contextwhere/drafts/return-to-work/<batch_id>.md` and `.json`; they do not auto-apply to `work_wiki`.
+- Instruction-like imported text is inert evidence, not an executable instruction channel.
+- This additive command tree does not change `daily`, `run`, or `maintain` behavior.

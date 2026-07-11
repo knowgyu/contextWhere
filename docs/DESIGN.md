@@ -176,3 +176,11 @@ contextwhere evidence show --source-locator <locator> --json
 ```
 
 This reads sanitized local evidence rows only; provider rehydration remains explicit future work.
+
+## Return-to-work ingest boundary
+
+Return-to-work ingest is thin orchestration over the existing evidence ledger. It adds no batch table, graph/vector store, Outlook adapter, or document-processing dependency. Batch provenance lives in evidence metadata and ingest-log details, while stable fingerprints make reordered reruns idempotent.
+
+The Outlook boundary remains MailWhere export JSON; contextWhere never calls Outlook COM. V1 accepts pasted text and explicit `.txt`/`.md` files. Unsupported formats are rejected before any insert. The default retention contract is locator/hash only, with explicit `--retain-raw` limited to user-supplied files.
+
+Imported content is untrusted, inert evidence even when it resembles agent instructions. Briefs are deterministic drafts at `.contextwhere/drafts/return-to-work/<batch_id>.md` and `.json`; they never auto-apply wiki changes. The command tree is additive and leaves `daily`, `run`, and `maintain` semantics unchanged.

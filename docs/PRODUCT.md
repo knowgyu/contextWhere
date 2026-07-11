@@ -76,3 +76,11 @@ Implemented scope-first runtime semantics:
 - `contextwhere capture-local --git --omx` captures read-only local git and `.omx` evidence with repo scope metadata.
 - Provider matrix now describes agent-session, repo-state, git, GitHub, Jenkins/deploy, MailWhere, OfficeWhere, and manual/wiki boundaries.
 - Graph/vector remain deferred until scoped packs are not enough.
+
+## Return-to-work briefing
+
+`return-to-work ingest|brief` packages a chosen absence period into a source-backed Markdown/JSON draft. Its thin manifest accepts MailWhere export JSON, pasted text, and explicit `.txt`/`.md` documents. It reuses the evidence ledger rather than adding a batch table or graph/vector dependency.
+
+The feature preserves product safety boundaries: Outlook COM stays behind MailWhere, locator/hash retention is the default, raw copies require `--retain-raw`, imported instructions remain inert evidence, and generated briefs never mutate the canonical work wiki automatically. Existing `daily`, `run`, and `maintain` workflows keep their current behavior.
+
+The stable draft paths are `.contextwhere/drafts/return-to-work/<batch_id>.md` and `.json`.
