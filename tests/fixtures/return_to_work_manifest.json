@@ -1,0 +1,25 @@
+{
+  "batch_id": "fixture-return",
+  "absence_period": {
+    "start": "2026-07-01",
+    "end": "2026-07-10",
+    "timezone": "Asia/Seoul"
+  },
+  "items": [
+    {
+      "kind": "mailwhere_export_json",
+      "path": "return_to_work_mailwhere.json",
+      "source_locator": "mailwhere-export:fixture"
+    },
+    {
+      "kind": "paste_text",
+      "path": "return_to_work_paste.txt",
+      "source_locator": "paste:fixture"
+    },
+    {
+      "kind": "document",
+      "path": "return_to_work_document.md",
+      "source_locator": "document:fixture"
+    }
+  ]
+}

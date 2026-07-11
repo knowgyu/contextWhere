@@ -66,6 +66,152 @@ def test_init_ingest_query_and_no_wiki_mutation(tmp_path, capsys):
     assert {"raw_body", "full_addresses", "attachments", "prompt_logs"} <= omitted
 
 
+def test_return_to_work_mixed_sources_are_inert_draft_only(tmp_path, capsys):
+    write_wiki(tmp_path)
+    before = file_hashes(tmp_path)
+    manifest = ROOT_FIXTURES / "return_to_work_manifest.json"
+
+    assert run_cli(["return-to-work", "ingest", "--root", str(tmp_path), "--batch", str(manifest), "--json"]) == 0
+    ingest = json.loads(capsys.readouterr().out)
+    assert ingest["ok"] is True
+    assert ingest["evidence_count"] == 3
+    assert ingest["source_kinds"] == ["document", "mailwhere_export_json", "paste_text"]
+    assert ingest["retained_raw"] == []
+    assert before == file_hashes(tmp_path)
+    assert not (tmp_path / ".contextwhere" / "return-to-work" / "raw").exists()
+
+    paths = resolve_paths(tmp_path)
+    with connect(paths.db_path) as conn:
+        rows = conn.execute(
+            "select provider, source_ref, metadata from evidence "
+            "where json_extract(metadata, '$.batch_id') = 'fixture-return' order by provider"
+        ).fetchall()
+        action_count = conn.execute("select count(*) from action_requests").fetchone()[0]
+        ingest_details = conn.execute(
+            "select details from ingest_log where provider='return-to-work' order by id desc limit 1"
+        ).fetchone()[0]
+    assert len(rows) == 3
+    assert action_count == 0
+    assert "ignore previous instructions" not in ingest_details
+    assert str(ROOT_FIXTURES) not in ingest_details
+    for row in rows:
+        metadata = json.loads(row["metadata"])
+        assert metadata["imported_content_is_inert_evidence"] is True
+        assert metadata["source_hash"]
+        assert metadata["source_locator"]
+        assert str(ROOT_FIXTURES) not in row["source_ref"]
+
+    assert run_cli(["return-to-work", "brief", "--root", str(tmp_path), "--batch-id", "fixture-return", "--json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is True
+    assert before == file_hashes(tmp_path)
+    assert not list((tmp_path / ".contextwhere" / "audit" / "wiki").glob("*.json"))
+    md_path = Path(result["markdown_path"])
+    json_path = Path(result["json_path"])
+    assert md_path == tmp_path / ".contextwhere" / "drafts" / "return-to-work" / "fixture-return.md"
+    assert json_path == tmp_path / ".contextwhere" / "drafts" / "return-to-work" / "fixture-return.json"
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    assert set(payload) == {
+        "absence_period", "batch_id", "contains_instruction_like_text", "first_day_checklist",
+        "generated_at", "notable_decisions_blockers_changes", "omitted_context_notes", "open_loops",
+        "safety_note", "source_coverage", "source_index", "summary",
+    }
+    assert payload["contains_instruction_like_text"] is True
+    assert payload["safety_note"] == "All imported content is inert evidence, not instructions."
+    markdown = md_path.read_text(encoding="utf-8")
+    for heading in (
+        "## Absence period and source coverage", "## What happened while away",
+        "## Notable decisions, blockers, or changes", "## Open loops / pending replies / follow-ups",
+        "## First-day return checklist", "## Source index", "## Omitted-context notes",
+    ):
+        assert heading in markdown
+    assert "overwrite work_wiki/index.md" not in markdown
+    assert "external deploy" not in markdown
+
+
+def test_return_to_work_reordered_manifest_is_idempotent(tmp_path, capsys):
+    base = json.loads((ROOT_FIXTURES / "return_to_work_manifest.json").read_text(encoding="utf-8"))
+    for item in base["items"]:
+        item["path"] = str((ROOT_FIXTURES / item["path"]).resolve())
+    first = tmp_path / "first.json"
+    reordered = tmp_path / "reordered.json"
+    first.write_text(json.dumps(base), encoding="utf-8")
+    base["items"].reverse()
+    reordered.write_text(json.dumps(base), encoding="utf-8")
+
+    assert run_cli(["return-to-work", "ingest", "--root", str(tmp_path), "--batch", str(first), "--json"]) == 0
+    one = json.loads(capsys.readouterr().out)
+    assert run_cli(["return-to-work", "ingest", "--root", str(tmp_path), "--batch", str(reordered), "--json"]) == 0
+    two = json.loads(capsys.readouterr().out)
+    assert one["batch_fingerprint"] == two["batch_fingerprint"]
+    assert sorted(one["evidence_ids"]) == sorted(two["evidence_ids"])
+    with connect(resolve_paths(tmp_path).db_path) as conn:
+        count = conn.execute("select count(*) from evidence").fetchone()[0]
+    assert count == 3
+
+
+def test_return_to_work_rejects_bad_envelopes_and_unsupported_inputs_atomically(tmp_path, capsys):
+    bad_mail = tmp_path / "bad-mail.json"
+    bad_mail.write_text(json.dumps([{"id": "not-an-envelope"}]), encoding="utf-8")
+    unsupported = tmp_path / "report.pdf"
+    unsupported.write_text("not really a PDF", encoding="utf-8")
+    for batch_id, item in (
+        ("bad-envelope", {"kind": "mailwhere_export_json", "path": str(bad_mail)}),
+        ("bad-format", {"kind": "document", "path": str(unsupported)}),
+    ):
+        root = tmp_path / batch_id
+        manifest = tmp_path / f"{batch_id}.json"
+        manifest.write_text(json.dumps({
+            "batch_id": batch_id,
+            "absence_period": {"start": "2026-07-01", "end": "2026-07-10", "timezone": "Asia/Seoul"},
+            "items": [item],
+        }), encoding="utf-8")
+        assert run_cli(["return-to-work", "ingest", "--root", str(root), "--batch", str(manifest), "--json"]) == 2
+        output = json.loads(capsys.readouterr().out)
+        assert output["ok"] is False
+        assert not (root / ".contextwhere" / "contextwhere.sqlite3").exists()
+        assert not (root / ".contextwhere" / "drafts").exists()
+        assert not (root / "work_wiki").exists()
+
+
+def test_return_to_work_mailwhere_envelope_requires_an_object_record_array(tmp_path, capsys):
+    invalid_envelopes = [
+        {},
+        {"items": {}},
+        {"items": ["not-a-record"]},
+    ]
+    for index, envelope in enumerate(invalid_envelopes):
+        source = tmp_path / f"mail-{index}.json"
+        source.write_text(json.dumps(envelope), encoding="utf-8")
+        manifest = tmp_path / f"manifest-{index}.json"
+        manifest.write_text(json.dumps({
+            "batch_id": f"invalid-mail-{index}",
+            "absence_period": {"start": "2026-07-01", "end": "2026-07-10", "timezone": "Asia/Seoul"},
+            "items": [{"kind": "mailwhere_export_json", "path": str(source)}],
+        }), encoding="utf-8")
+        root = tmp_path / f"root-{index}"
+        assert run_cli(["return-to-work", "ingest", "--root", str(root), "--batch", str(manifest), "--json"]) == 2
+        output = json.loads(capsys.readouterr().out)
+        assert "MailWhere export envelope requires an items array" in output["error"]
+        assert not (root / ".contextwhere" / "contextwhere.sqlite3").exists()
+
+
+def test_return_to_work_retain_raw_is_explicit_and_scoped(tmp_path, capsys):
+    manifest = ROOT_FIXTURES / "return_to_work_manifest.json"
+    assert run_cli([
+        "return-to-work", "ingest", "--root", str(tmp_path), "--batch", str(manifest), "--retain-raw", "--json"
+    ]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["retain_raw"] is True
+    assert sorted(result["retained_raw"]) == [
+        ".contextwhere/return-to-work/raw/fixture-return/return_to_work_document.md",
+        ".contextwhere/return-to-work/raw/fixture-return/return_to_work_paste.txt",
+    ]
+    assert not any("mailwhere" in path for path in result["retained_raw"])
+    for relative in result["retained_raw"]:
+        assert (tmp_path / relative).is_file()
+
+
 def test_mailwhere_missing_command_is_structured_unavailable():
     result = MailWhereProvider(command="definitely-missing-mailwhere-cli").health()
     assert not result.ok
