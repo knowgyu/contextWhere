@@ -174,11 +174,26 @@ def test_return_to_work_rejects_bad_envelopes_and_unsupported_inputs_atomically(
         assert not (root / "work_wiki").exists()
 
 
-def test_return_to_work_mailwhere_envelope_requires_an_object_record_array(tmp_path, capsys):
+def test_return_to_work_mailwhere_envelope_requires_documented_shape_and_fields(tmp_path, capsys):
+    valid_item = {
+        "kind": "task",
+        "id": "task-1",
+        "title": "Decision: delay production rollout",
+        "reason": "Blocked pending security review",
+        "evidence_snippet": "Follow up with the release owner on Monday",
+    }
     invalid_envelopes = [
         {},
-        {"items": {}},
-        {"items": ["not-a-record"]},
+        {"provider": "MailWhere", "contract_version": "v1", "tasks": [valid_item]},
+        {"provider": "MailWhere", "contract_version": "v1", "records": [valid_item]},
+        {"provider": "MailWhere", "contract_version": "v1", "items": {}},
+        {"provider": "MailWhere", "contract_version": "v1", "items": ["not-a-record"]},
+        {"provider": "Other", "contract_version": "v1", "items": [valid_item]},
+        {"provider": "MailWhere", "items": [valid_item]},
+        {"provider": "MailWhere", "contract_version": "v1", "items": [{**valid_item, "id": ""}]},
+        {"provider": "MailWhere", "contract_version": "v1", "items": [{**valid_item, "title": ""}]},
+        {"provider": "MailWhere", "contract_version": "v1", "items": [{**valid_item, "evidence_snippet": ""}]},
+        {"provider": "MailWhere", "contract_version": "v1", "items": [{**valid_item, "reason": ""}]},
     ]
     for index, envelope in enumerate(invalid_envelopes):
         source = tmp_path / f"mail-{index}.json"
@@ -192,9 +207,36 @@ def test_return_to_work_mailwhere_envelope_requires_an_object_record_array(tmp_p
         root = tmp_path / f"root-{index}"
         assert run_cli(["return-to-work", "ingest", "--root", str(root), "--batch", str(manifest), "--json"]) == 2
         output = json.loads(capsys.readouterr().out)
-        assert "MailWhere export envelope requires an items array" in output["error"]
+        assert output["ok"] is False
+        assert "MailWhere" in output["error"]
         assert not (root / ".contextwhere" / "contextwhere.sqlite3").exists()
 
+
+def test_return_to_work_brief_uninitialized_root_is_structured_json(tmp_path, capsys):
+    assert run_cli(["return-to-work", "brief", "--root", str(tmp_path), "--batch-id", "missing", "--json"]) == 2
+    output = capsys.readouterr().out
+    result = json.loads(output)
+    assert result["ok"] is False
+    assert "contextWhere database not initialized" in result["error"]
+    assert "Traceback" not in output
+
+
+def test_return_to_work_brief_is_byte_stable_when_repeated(tmp_path, capsys):
+    manifest = ROOT_FIXTURES / "return_to_work_manifest.json"
+    assert run_cli(["return-to-work", "ingest", "--root", str(tmp_path), "--batch", str(manifest), "--json"]) == 0
+    capsys.readouterr()
+    assert run_cli(["return-to-work", "brief", "--root", str(tmp_path), "--batch-id", "fixture-return", "--json"]) == 0
+    first_result = json.loads(capsys.readouterr().out)
+    json_path = Path(first_result["json_path"])
+    md_path = Path(first_result["markdown_path"])
+    first_json = json_path.read_bytes()
+    first_markdown = md_path.read_bytes()
+    assert run_cli(["return-to-work", "brief", "--root", str(tmp_path), "--batch-id", "fixture-return", "--json"]) == 0
+    second_result = json.loads(capsys.readouterr().out)
+    assert json_path == Path(second_result["json_path"])
+    assert md_path == Path(second_result["markdown_path"])
+    assert json_path.read_bytes() == first_json
+    assert md_path.read_bytes() == first_markdown
 
 def test_return_to_work_retain_raw_is_explicit_and_scoped(tmp_path, capsys):
     manifest = ROOT_FIXTURES / "return_to_work_manifest.json"
@@ -211,6 +253,35 @@ def test_return_to_work_retain_raw_is_explicit_and_scoped(tmp_path, capsys):
     for relative in result["retained_raw"]:
         assert (tmp_path / relative).is_file()
 
+
+
+def test_return_to_work_retain_raw_uses_fingerprint_for_name_collisions(tmp_path, capsys):
+    first_dir = tmp_path / "one"
+    second_dir = tmp_path / "two"
+    first_dir.mkdir()
+    second_dir.mkdir()
+    first_source = first_dir / "same.txt"
+    second_source = second_dir / "same.txt"
+    first_source.write_text("First raw source", encoding="utf-8")
+    second_source.write_text("Second raw source", encoding="utf-8")
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({
+        "batch_id": "raw-collision",
+        "absence_period": {"start": "2026-07-01", "end": "2026-07-10", "timezone": "Asia/Seoul"},
+        "items": [
+            {"kind": "document", "path": str(first_source), "source_locator": "document:first"},
+            {"kind": "document", "path": str(second_source), "source_locator": "document:second"},
+        ],
+    }), encoding="utf-8")
+
+    assert run_cli(["return-to-work", "ingest", "--root", str(tmp_path / "root"), "--batch", str(manifest), "--retain-raw", "--json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert len(result["retained_raw"]) == 2
+    assert len(set(result["retained_raw"])) == 2
+    assert any(path.endswith("same.txt") for path in result["retained_raw"])
+    assert any("same-" in path and path.endswith(".txt") for path in result["retained_raw"])
+    retained_texts = sorted((tmp_path / "root" / relative).read_text(encoding="utf-8") for relative in result["retained_raw"])
+    assert retained_texts == ["First raw source", "Second raw source"]
 
 def test_mailwhere_missing_command_is_structured_unavailable():
     result = MailWhereProvider(command="definitely-missing-mailwhere-cli").health()

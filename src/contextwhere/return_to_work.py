@@ -8,7 +8,7 @@ from typing import Any
 
 from .capture import capture_session_text, redact_text
 from .db import connect, init_db, insert_evidence, log_ingest
-from .schemas import EvidenceRecord, evidence_from_item, utc_now
+from .schemas import EvidenceRecord, evidence_from_item
 
 SUPPORTED_DOCUMENT_SUFFIXES = {".txt", ".md"}
 SOURCE_KINDS = {"mailwhere_export_json", "paste_text", "document"}
@@ -65,11 +65,29 @@ def _source_text(item: dict[str, Any], manifest_dir: Path) -> tuple[str, Path | 
 
 
 def _mailwhere_items(envelope: dict[str, Any]) -> list[dict[str, Any]]:
+    provider = envelope.get("provider")
+    if not isinstance(provider, str) or provider.strip().lower() != "mailwhere":
+        raise ValueError("MailWhere export envelope requires provider MailWhere")
+    contract_version = envelope.get("contract_version")
+    if not isinstance(contract_version, str) or not contract_version.strip():
+        raise ValueError("MailWhere export envelope requires contract_version")
     items = envelope.get("items")
-    if items is None:
-        items = envelope.get("tasks") or envelope.get("records")
-    if not isinstance(items, list) or not all(isinstance(item, dict) for item in items):
-        raise ValueError("MailWhere export envelope requires an items array")
+    if not isinstance(items, list) or not items or not all(isinstance(item, dict) for item in items):
+        raise ValueError("MailWhere export envelope requires a non-empty items array")
+
+    for index, item in enumerate(items):
+        stable_id = item.get("source_id") or item.get("id") or item.get("file_id") or item.get("task_id")
+        title = item.get("title")
+        snippet = item.get("evidence_snippet") or item.get("snippet")
+        reason = item.get("reason")
+        if isinstance(stable_id, bool) or not isinstance(stable_id, (str, int)) or not str(stable_id).strip():
+            raise ValueError(f"MailWhere item {index} requires a stable source id")
+        if not isinstance(title, str) or not title.strip():
+            raise ValueError(f"MailWhere item {index} requires a meaningful title")
+        if not isinstance(snippet, str) or not snippet.strip():
+            raise ValueError(f"MailWhere item {index} requires a meaningful snippet")
+        if not isinstance(reason, str) or not reason.strip():
+            raise ValueError(f"MailWhere item {index} requires a meaningful reason")
     return items
 
 
@@ -180,6 +198,9 @@ def ingest_manifest(root: Path, manifest_path: Path, retain_raw: bool = False) -
             target_dir = paths.data_dir / "return-to-work" / "raw" / batch_id
             target_dir.mkdir(parents=True, exist_ok=True)
             target = target_dir / source_path.name
+            if target.exists():
+                fingerprint = descriptor["source_hash"][:12]
+                target = target_dir / f"{source_path.stem}-{fingerprint}{source_path.suffix}"
             shutil.copy2(source_path, target)
             retained.append(str(target.relative_to(paths.root)))
 
@@ -219,11 +240,17 @@ def _brief_payload(batch_id: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
         for row, meta in zip(rows, metadata)
     ]
     text = "\n".join(f"{row['title']} {row['snippet']} {row['summary']}" for row in rows)
+    generated_at = (
+        next((row.get("occurred_at") for row in rows if row.get("occurred_at")), None)
+        or next((meta.get("manifest_generated_at") for meta in metadata if meta.get("manifest_generated_at")), None)
+        or period.get("end")
+        or batch_id
+    )
     notable = [source for source in sources if any(word in (source["title"] + " " + source["summary"]).lower() for word in ("decision", "change", "block"))]
     open_loops = [source for source in sources if any(word in (source["title"] + " " + source["summary"]).lower() for word in ("todo", "follow", "pending", "reply", "open"))]
     return {
         "batch_id": batch_id,
-        "generated_at": utc_now(),
+        "generated_at": generated_at,
         "absence_period": period,
         "source_coverage": sorted({source["source_kind"] for source in sources}),
         "summary": f"{len(sources)} source-backed evidence records were imported for return-to-work review.",
@@ -268,6 +295,8 @@ def build_brief(root: Path, batch_id: str) -> dict[str, Any]:
     from .config import resolve_paths
 
     paths = resolve_paths(root)
+    if not paths.db_path.exists():
+        raise ValueError("contextWhere database not initialized")
     rows = _batch_rows(paths.db_path, batch_id)
     if not rows:
         raise ValueError(f"no evidence found for batch: {batch_id}")

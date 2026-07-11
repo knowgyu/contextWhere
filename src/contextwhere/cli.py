@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sqlite3
 import platform
 import shlex
 import subprocess
@@ -440,7 +441,7 @@ def cmd_return_to_work(args: argparse.Namespace) -> int:
             result = build_brief(Path(args.root), args.batch_id)
         else:
             raise SystemExit(f"unsupported return-to-work command: {args.return_to_work_command}")
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError, json.JSONDecodeError, sqlite3.Error) as exc:
         result = {"ok": False, "error": f"return-to-work failed: {type(exc).__name__}: {exc}"}
         emit(result, args.json)
         return 2
