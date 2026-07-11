@@ -156,9 +156,9 @@ def load_manifest(manifest_path: Path) -> tuple[dict[str, Any], list[tuple[list[
 def ingest_manifest(root: Path, manifest_path: Path, retain_raw: bool = False) -> dict[str, Any]:
     from .config import ensure_dirs, resolve_paths
 
+    normalized, prepared = load_manifest(manifest_path)
     paths = resolve_paths(root)
     ensure_dirs(paths)
-    normalized, prepared = load_manifest(manifest_path)
     init_db(paths.db_path)
     batch_id = normalized["batch_id"]
     records: list[EvidenceRecord] = []
