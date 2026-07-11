@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from .capture import capture_session_text
+from .capture import capture_session_text, redact_text
 from .db import connect, insert_evidence, log_ingest
 from .schemas import EvidenceRecord, evidence_from_item, utc_now
 
@@ -88,6 +88,10 @@ def _prepare_item(item: dict[str, Any], manifest_dir: Path, index: int) -> tuple
         record.provider = "document"
         record.kind = "document"
         record.title = str(item.get("title") or path.name)
+        safe_text, omitted = redact_text(text)
+        record.snippet = safe_text[:500]
+        record.summary = safe_text[:4000]
+        record.omitted_fields = sorted(set(record.omitted_fields + omitted + ["local_path"]))
         record.provenance = "return-to-work-document"
         records = [record]
     elif kind == "paste_text":
@@ -97,6 +101,10 @@ def _prepare_item(item: dict[str, Any], manifest_dir: Path, index: int) -> tuple
         record.provider = "paste"
         record.kind = "paste_text"
         record.title = str(item.get("title") or "Pasted return-to-work evidence")
+        safe_text, omitted = redact_text(text)
+        record.snippet = safe_text[:500]
+        record.summary = safe_text[:4000]
+        record.omitted_fields = sorted(set(record.omitted_fields + omitted))
         record.provenance = "return-to-work-paste"
         records = [record]
     else:

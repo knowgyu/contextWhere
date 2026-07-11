@@ -29,6 +29,7 @@ from .status import project_status
 from .provider_matrix import provider_matrix
 from .context_pack import build_context_pack, render_markdown
 from .local_capture import capture_git, capture_omx
+from .return_to_work import build_brief, ingest_manifest
 
 
 def emit(data: Any, as_json: bool = False) -> None:
@@ -431,6 +432,22 @@ def cmd_capture_local(args: argparse.Namespace) -> int:
     return 0 if status == "ok" else 2
 
 
+def cmd_return_to_work(args: argparse.Namespace) -> int:
+    try:
+        if args.return_to_work_command == "ingest":
+            result = ingest_manifest(Path(args.root), Path(args.batch), retain_raw=args.retain_raw)
+        elif args.return_to_work_command == "brief":
+            result = build_brief(Path(args.root), args.batch_id)
+        else:
+            raise SystemExit(f"unsupported return-to-work command: {args.return_to_work_command}")
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        result = {"ok": False, "error": f"return-to-work failed: {type(exc).__name__}: {exc}"}
+        emit(result, args.json)
+        return 2
+    emit(result, args.json)
+    return 0
+
+
 def _step(name: str, ok: bool, status: str, detail: str = "") -> dict[str, Any]:
     return {"name": name, "ok": ok, "status": status, "detail": detail}
 
@@ -711,6 +728,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--omx", action="store_true", help="Capture repo-local .omx plan/context files as agent-session evidence")
     p.add_argument("--limit", type=int, default=20)
     p.set_defaults(func=cmd_capture_local)
+
+    return_to_work = sub.add_parser("return-to-work")
+    add_common(return_to_work)
+    return_to_work_sub = return_to_work.add_subparsers(dest="return_to_work_command", required=True)
+    p = return_to_work_sub.add_parser("ingest")
+    add_common(p)
+    p.add_argument("--batch", required=True, help="Path to a thin return-to-work manifest JSON file")
+    p.add_argument("--retain-raw", action="store_true", help="Copy user-supplied text files into the batch raw vault")
+    p.set_defaults(func=cmd_return_to_work)
+    p = return_to_work_sub.add_parser("brief")
+    add_common(p)
+    p.add_argument("--batch-id", required=True)
+    p.set_defaults(func=cmd_return_to_work)
 
     context = sub.add_parser("context")
     add_common(context)
