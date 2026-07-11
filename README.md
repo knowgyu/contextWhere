@@ -6,7 +6,7 @@ MailWhere와 OfficeWhere는 중요한 provider지만, 제품의 전체 경계는
 
 ## 현재 릴리즈
 
-- 최신 로컬 버전: **0.14.0**
+- 최신 로컬 버전: **0.15.0**
 - 원격 저장소: <https://github.com/knowgyu/contextWhere>
 - 기본 브랜치: `main`
 
@@ -98,6 +98,7 @@ OfficeWhere는 기본 sweep 대상이 아니다. 메일 file-link나 명시 quer
 
 - 설계: [`docs/DESIGN.md`](docs/DESIGN.md)
 - 제품 브리프/로드맵: [`docs/PRODUCT.md`](docs/PRODUCT.md)
+- Windows 11 setup: [`docs/WINDOWS.md`](docs/WINDOWS.md)
 - 설치: [`docs/INSTALL.md`](docs/INSTALL.md)
 - 운영: [`docs/OPERATIONS.md`](docs/OPERATIONS.md)
 - 스케줄: [`docs/SCHEDULES.md`](docs/SCHEDULES.md)
@@ -107,7 +108,7 @@ OfficeWhere는 기본 sweep 대상이 아니다. 메일 file-link나 명시 quer
 
 ## 다음 방향
 
-v0.14.0은 evidence/wiki/automation 기반 위에 **workspace context OS semantics**를 올렸다.
+v0.15.0은 evidence/wiki/automation 기반 위에 **workspace context OS semantics**를 올렸다.
 
 - tenant/scope/source-locator vocabulary
 - provider registry for agent sessions, repo/git/GitHub, Jenkins/deploy, MailWhere, OfficeWhere
@@ -117,7 +118,7 @@ v0.14.0은 evidence/wiki/automation 기반 위에 **workspace context OS semanti
 
 자세한 실행 계획은 `.omx/plans/prd-contextwhere-workspace-context-os-*.md`를 본다.
 
-## v0.14.0 implementation note
+## v0.15.0 implementation note
 
 Implemented scope-first runtime semantics:
 

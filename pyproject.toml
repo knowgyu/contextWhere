@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "contextwhere"
-version = "0.14.0"
+version = "0.15.0"
 description = "Local-first workspace context OS with scoped evidence, work-wiki automation, and context packs."
 readme = "README.md"
 requires-python = ">=3.11"

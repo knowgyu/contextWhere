@@ -1,34 +1,37 @@
-# contextWhere 운영 스케줄 예제
+# contextWhere schedules
 
-설치 후 기본 운영은 `contextwhere autostart install` 한 번이면 된다. 이 명령은 OS 기본 스케줄러에 `contextwhere maintain --json`을 등록한다. 이 기본 maintain는 OfficeWhere 문서 검색을 하지 않는다.
+Windows 11 is the primary target. Ubuntu is supported. macOS is deferred.
 
-## 사전 점검
+## Windows 11
 
-```bash
-contextwhere verify --json
-contextwhere maintain --json
+Preview:
+
+```powershell
 contextwhere autostart plan --json
 ```
 
-## 자동 실행 설치
+Install:
 
-Interactive Y/N:
-
-```bash
+```powershell
 contextwhere autostart install
 ```
 
-Scripted install:
+This registers a Windows Task Scheduler task named `contextWhereMaintain` that runs `contextwhere maintain --json`. It does not run live provider search and it is not a daemon.
+
+## Ubuntu
+
+Preview and install use the same CLI:
 
 ```bash
-contextwhere autostart install --yes --json
+contextwhere autostart plan --json
+contextwhere autostart install
 ```
 
-Linux에서는 user-level systemd timer를 쓰고, Windows에서는 Task Scheduler를 쓴다. 자체 daemon은 두지 않는다.
+Ubuntu uses a user-level systemd timer named `contextwhere-maintain.timer`.
 
-## 운영 원칙
+## Principles
 
-- 원문 provider는 read-only로만 사용한다.
-- 자동 실행은 `maintain`까지가 기본이다.
-- `wiki apply`는 자동 실행하지 않는다. 중요한 운영 환경에서는 사람이 draft를 확인한 뒤 적용한다.
-- `.contextwhere/contextwhere.sqlite3`, `.contextwhere/audit/wiki/`, `work_wiki/`는 함께 백업한다.
+- Raw providers stay read-only.
+- Automatic execution defaults to `maintain` only.
+- `wiki apply` is never automatic.
+- Back up `.contextwhere/contextwhere.sqlite3`, `.contextwhere/audit/wiki/`, and `work_wiki/` together.
