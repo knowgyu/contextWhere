@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .capture import capture_session_text, redact_text
-from .db import connect, insert_evidence, log_ingest
+from .db import connect, init_db, insert_evidence, log_ingest
 from .schemas import EvidenceRecord, evidence_from_item, utc_now
 
 SUPPORTED_DOCUMENT_SUFFIXES = {".txt", ".md"}
@@ -125,6 +125,8 @@ def _prepare_item(item: dict[str, Any], manifest_dir: Path, index: int) -> tuple
         "item_fingerprint": item_fingerprint,
         "record_count": len(records),
     }
+    for record in records:
+        record.source_ref = _sha256_text(f"{item_fingerprint}:{record.source_ref}")
     return records, descriptor, path
 
 
@@ -157,6 +159,7 @@ def ingest_manifest(root: Path, manifest_path: Path, retain_raw: bool = False) -
     paths = resolve_paths(root)
     ensure_dirs(paths)
     normalized, prepared = load_manifest(manifest_path)
+    init_db(paths.db_path)
     batch_id = normalized["batch_id"]
     records: list[EvidenceRecord] = []
     retained: list[str] = []
