@@ -1,58 +1,31 @@
-# contextWhere install and quick start
+# Install contextWhere
 
-contextWhere 0.15.2 targets Windows 11 first, with Ubuntu supported. It is a local-first Python/SQLite CLI workspace context OS slice. Provider ingest is read-only; wiki writes happen only through audited `wiki apply` drafts.
+Version: 0.16.0
 
-## Requirements
+contextWhere targets Windows 11 first and also supports Linux/macOS development checkouts. It stores repository evidence under the repository and reusable memory under a global home.
 
-- Windows 11 + PowerShell, or Ubuntu 22.04+
-- Python 3.11+
-- SQLite with FTS5 support
-- Optional on Windows: MailWhere CLI (`MailWhere.Cli.exe`) for live mail/task ingest
-- Optional: OfficeWhere loopback HTTP provider for live document search
+## Paths
 
-## Windows 11 user install
+| Purpose | Windows default | Linux/macOS default |
+| --- | --- | --- |
+| Global home | `%USERPROFILE%\.contextwhere\` | `~/.contextwhere/` |
+| Global DB | `%USERPROFILE%\.contextwhere\contextwhere.sqlite3` | `~/.contextwhere/contextwhere.sqlite3` |
+| Registry | `%USERPROFILE%\.contextwhere\registry.json` | `~/.contextwhere/registry.json` |
+| Repo state | `<repo>\.contextwhere\` | `<repo>/.contextwhere/` |
 
-```powershell
-uv tool install git+https://github.com/knowgyu/contextWhere.git
-contextwhere verify --json
-contextwhere maintain --json
-contextwhere autostart plan --json
-```
+Use `--home <path>` for portable tests or managed-PC validation.
 
-If `contextwhere` is not found, open a new PowerShell so PATH updates apply.
+## Development checkout
 
-Without `uv`:
-
-```powershell
-py -m pip install --user pipx
-py -m pipx ensurepath
-pipx install git+https://github.com/knowgyu/contextWhere.git
-contextwhere verify --json
-```
-
-## Windows 11 development checkout
-
-```powershell
+```bash
 git clone https://github.com/knowgyu/contextWhere.git
 cd contextWhere
 uv sync
 uv run pytest -q
 uv run contextwhere verify --json
-uv run contextwhere maintain --json
 ```
 
 Without `uv`:
-
-```powershell
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-py -m pip install -U pip
-py -m pip install -e . pytest
-pytest -q
-contextwhere verify --json
-```
-
-## Ubuntu support path
 
 ```bash
 python3 -m venv .venv
@@ -61,57 +34,79 @@ python -m pip install -U pip
 python -m pip install -e . pytest
 pytest -q
 contextwhere verify --json
-contextwhere maintain --json
 ```
 
-## First run
+## Global setup
 
-```powershell
+Preview first:
+
+```bash
+contextwhere setup --dry-run --json
+```
+
+Create global home, memory DB, registry, draft directories, and audit directories:
+
+```bash
+contextwhere setup --json
+contextwhere doctor --json
+```
+
+Install advisory agent bridges only after reviewing the target paths:
+
+```bash
+contextwhere integrations status --agent all --json
+contextwhere integrations install --agent codex --dry-run --json
+contextwhere integrations install --agent codex --json
+```
+
+Use `--agent claude` or `--agent gemini` for the other supported agents. `setup --install-integrations --json` installs all bridges; use it only when that side effect is intended.
+
+## Register workspaces and repositories
+
+```bash
+contextwhere registry register workspace /home/you/workspace --json
+contextwhere registry register repository /home/you/workspace/contextWhere --workspace /home/you/workspace --json
+contextwhere registry list --json
+contextwhere registry resolve /home/you/workspace/contextWhere --json
+```
+
+## Initialize a repository
+
+```bash
 contextwhere init --json
+contextwhere status --json
 contextwhere providers matrix --json
-contextwhere providers health --all --json
-contextwhere maintain --json
+contextwhere context pack --query "current task" --json
+```
+
+## Optional autostart
+
+Preview the local maintenance task:
+
+```bash
 contextwhere autostart plan --json
 ```
 
-To keep local maintenance running without manual commands, inspect the plan and install user-level autostart once:
+Install only after checking the command and path:
 
-```powershell
-contextwhere autostart plan --json
+```bash
 contextwhere autostart install
 ```
 
-On Windows this registers a Task Scheduler task named `contextWhereMaintain`. On Ubuntu it writes a user-level systemd timer. Both run `contextwhere maintain --json`; neither starts a daemon.
+Windows creates a Task Scheduler task named `contextWhereMaintain`. Linux writes a user-level systemd timer. Both run `contextwhere maintain --json`; neither starts a long-running daemon.
 
-## Live provider examples
+## Live providers
 
-MailWhere:
+MailWhere live ingest is explicit:
 
-```powershell
-contextwhere run --mailwhere-command MailWhere.Cli.exe --json
+```bash
+contextwhere ingest --provider mailwhere --limit 50 --json
 ```
 
-OfficeWhere search is opt-in and must be loopback/local:
+OfficeWhere live search is explicit and loopback/local only:
 
-```powershell
-contextwhere run --officewhere-base-url http://127.0.0.1:18765 --officewhere-query "file or project hint from mail" --json
+```bash
+contextwhere ingest --provider officewhere --query "file or project hint" --limit 25 --json
 ```
 
-Packaged OfficeWhere normally uses a dynamic loopback port. contextWhere reads the current user-scoped `provider-discovery.json` first and falls back to the development URL when discovery is absent or stale. `OFFICEWHERE_BASE_URL` or `--officewhere-base-url` remains an explicit loopback-only override. Missing providers return structured `status:"unavailable"` entries and are safe to continue. Non-loopback URLs are rejected as `unsafe_url`.
-
-## Routine maintenance
-
-```powershell
-contextwhere maintain --json
-```
-
-Local-only. Missing `work_wiki`, `.git`, or `.omx` is safe; broken git is a warning unless `--strict-git` is set.
-
-## Evidence inspection
-
-```powershell
-contextwhere evidence show <evidence_id> --json
-contextwhere evidence show --source-locator <locator> --json
-```
-
-This reads sanitized local evidence rows only; provider rehydration remains explicit future work.
+If a provider is missing, timed out, unsafe, or returns invalid output, contextWhere returns structured `ok:false`/`status:"unavailable"` output. That is safe to continue from and should not be documented as a successful live check.

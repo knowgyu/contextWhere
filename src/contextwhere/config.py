@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import platform
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -25,6 +27,14 @@ def resolve_paths(root: str | Path = ".") -> Paths:
         draft_dir=state / "drafts" / "wiki",
         audit_dir=state / "audit" / "wiki",
     )
+
+
+def resolve_global_home() -> Path:
+    if platform.system().lower() == "windows":
+        home = os.environ.get("USERPROFILE")
+        if home:
+            return Path(home).expanduser() / ".contextwhere"
+    return Path.home() / ".contextwhere"
 
 
 def ensure_dirs(paths: Paths) -> None:

@@ -9,10 +9,33 @@ from .config import ensure_dirs, resolve_paths
 from .db import init_db, insert_evidence, query_evidence_with_mode
 from .entities import extract_entities, list_entities, list_relationships
 from .recall import create_bundle, list_bundles, show_bundle
+from .signals import capture_signal, memory_db, preflight as signals_preflight, stable_fingerprint
 
 MAX_LIMIT = 500
 
 TOOL_MANIFEST: list[dict[str, Any]] = [
+
+    {
+        "name": "signal_fingerprint",
+        "description": "Return the stable sanitized fingerprint for a capture signal.",
+        "input_schema": {"type": "object", "properties": {"type": {"type": "string"}}, "required": ["type"]},
+        "safe": True,
+        "mutates": False,
+    },
+    {
+        "name": "capture_signal",
+        "description": "Capture a sanitized memory signal and optional card candidate.",
+        "input_schema": {"type": "object", "properties": {"type": {"type": "string"}, "repository": {"type": "string"}, "machine": {"type": "string"}, "home": {"type": "string"}}, "required": ["type"]},
+        "safe": True,
+        "mutates": True,
+    },
+    {
+        "name": "signal_preflight",
+        "description": "Return active verified procedures for a repeated failure fingerprint without invoking providers.",
+        "input_schema": {"type": "object", "properties": {"fingerprint": {"type": "string"}, "repository": {"type": "string"}, "machine": {"type": "string"}}},
+        "safe": True,
+        "mutates": False,
+    },
     {
         "name": "query_evidence",
         "description": "Search sanitized evidence rows with FTS/fallback query.",
@@ -128,6 +151,31 @@ def call_tool(root: str | Path, name: str, payload: dict[str, Any]) -> dict[str,
     if name not in TOOL_BY_NAME:
         return {"ok": False, "tool": name, "error": f"unknown tool: {name}"}
 
+
+    if name == "signal_fingerprint":
+        return {"ok": True, "tool": name, "fingerprint": stable_fingerprint(payload)}
+    if name == "capture_signal":
+        home = optional_string(payload, "home", "") or None
+        repository = optional_string(payload, "repository", "") or None
+        machine = optional_string(payload, "machine", "") or None
+        threshold = payload.get("threshold", 2)
+        if isinstance(threshold, bool) or not isinstance(threshold, int) or threshold < 1:
+            raise ToolInputError("threshold must be a positive integer")
+        signal_payload = {k: v for k, v in payload.items() if k not in {"home", "repository", "machine", "threshold"}}
+        result = capture_signal(memory_db(home), signal_payload, repository=repository, machine=machine, threshold=threshold)
+        result["tool"] = name
+        return result
+    if name == "signal_preflight":
+        home = optional_string(payload, "home", "") or None
+        repository = optional_string(payload, "repository", "") or None
+        machine = optional_string(payload, "machine", "") or None
+        fingerprint = optional_string(payload, "fingerprint", "") or None
+        threshold = payload.get("threshold", 2)
+        if isinstance(threshold, bool) or not isinstance(threshold, int) or threshold < 1:
+            raise ToolInputError("threshold must be a positive integer")
+        result = signals_preflight(memory_db(home), repository=repository, machine=machine, fingerprint=fingerprint, threshold=threshold)
+        result["tool"] = name
+        return result
     if name == "query_evidence":
         query = require_string(payload, "query")
         limit = bounded_limit(payload, 20)

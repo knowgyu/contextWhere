@@ -4,7 +4,7 @@ import json
 import re
 from pathlib import Path
 
-from .schemas import EvidenceRecord
+from .schemas import EvidenceRecord, redact_text as redact_unsafe_text
 
 SESSION_FIELDS = ("goal", "constraints", "decisions", "changes", "verification", "follow-ups", "followups")
 PATH_RE = re.compile(r"(?:/[\w .@+-]+){2,}|[A-Za-z]:\\[^\s]+")
@@ -13,7 +13,7 @@ PROMPT_LOG_RE = re.compile(r"prompt\s*log|raw\s*transcript|secret", re.IGNORECAS
 
 def redact_text(value: str) -> tuple[str, list[str]]:
     omitted: list[str] = []
-    text = value
+    text = redact_unsafe_text(value)
     if PROMPT_LOG_RE.search(text):
         text = PROMPT_LOG_RE.sub("[REDACTED_SENSITIVE]", text)
         omitted.append("prompt_logs")

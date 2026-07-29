@@ -70,6 +70,48 @@ CREATE TABLE IF NOT EXISTS relationships (
   created_at TEXT NOT NULL,
   UNIQUE(subject_entity_id, predicate, object_entity_id, evidence_id)
 );
+
+CREATE TABLE IF NOT EXISTS context_cards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  card_id TEXT NOT NULL UNIQUE,
+  version TEXT NOT NULL DEFAULT 'context-card-v1',
+  card_type TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  scope TEXT NOT NULL,
+  status TEXT NOT NULL,
+  sensitivity TEXT NOT NULL DEFAULT 'internal',
+  confidence TEXT NOT NULL DEFAULT 'medium',
+  evidence_ids TEXT NOT NULL DEFAULT '[]',
+  source_locators TEXT NOT NULL DEFAULT '[]',
+  verification TEXT NOT NULL DEFAULT '{}',
+  freshness TEXT NOT NULL DEFAULT '{}',
+  rule TEXT NOT NULL DEFAULT '',
+  rationale TEXT NOT NULL DEFAULT '',
+  steps TEXT NOT NULL DEFAULT '[]',
+  preconditions TEXT NOT NULL DEFAULT '[]',
+  success_checks TEXT NOT NULL DEFAULT '[]',
+  decision TEXT NOT NULL DEFAULT '',
+  drivers TEXT NOT NULL DEFAULT '[]',
+  alternatives TEXT NOT NULL DEFAULT '[]',
+  failure_fingerprint TEXT NOT NULL DEFAULT '',
+  lesson TEXT NOT NULL DEFAULT '',
+  resolution TEXT NOT NULL DEFAULT '',
+  supersedes TEXT NOT NULL DEFAULT '[]',
+  superseded_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS context_card_audit (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  card_id TEXT NOT NULL,
+  event TEXT NOT NULL,
+  from_status TEXT,
+  to_status TEXT,
+  reason TEXT NOT NULL DEFAULT '',
+  evidence_ids TEXT NOT NULL DEFAULT '[]',
+  actor TEXT NOT NULL DEFAULT 'contextwhere',
+  created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS recall_bundles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   bundle_id TEXT NOT NULL UNIQUE,

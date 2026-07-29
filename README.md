@@ -1,158 +1,118 @@
 # contextWhere
 
-contextWhere는 흩어진 작업 맥락을 로컬 우선 evidence ledger, Markdown wiki, 그리고 task-specific context pack으로 묶는 **workspace context OS**다.
+contextWhere is a local-first workspace context OS for developer/operator agents. It collects sanitized evidence from repo state, agent sessions, MailWhere, OfficeWhere, GitHub/Jenkins-style work systems, and explicit notes, then turns that evidence into scoped Context Cards, Markdown drafts, and compact context packs.
 
-MailWhere와 OfficeWhere는 중요한 provider지만, 제품의 전체 경계는 아니다. repo-local `.omx`, Codex/OMX/Claude Code/Gemini 세션, git/GitHub, Jenkins/deploy 지식, 메일, 문서까지 모두 같은 source-backed evidence 모델에 들어와야 한다.
+## Current release
 
-## 현재 릴리즈
+- Local version: **0.16.0**
+- Repository: <https://github.com/knowgyu/contextWhere>
+- Default branch: `main`
 
-- 최신 로컬 버전: **0.15.2**
-- 원격 저장소: <https://github.com/knowgyu/contextWhere>
-- 기본 브랜치: `main`
+v0.16.0 adds the global home memory layer, registry/scopes, Context Card lifecycle, signals/preflight, repository/global draft-apply flow, setup/doctor, and Codex/Claude/Gemini advisory integrations on top of the earlier repo-local evidence/wiki/context-pack foundation.
 
-주요 기반:
+## What it does
 
-- Python/SQLite CLI
-- sanitized evidence ingest
-- MailWhere/OfficeWhere read-only provider adapters
-- wiki draft/apply boundary + lint
-- `capture-session` for CLI/agent session evidence
-- deterministic entity/relationship seed extraction
-- recall bundles
-- backup/restore
-- status/verify
-- provider matrix
-- `run`/`maintain` scheduler-friendly runner
-- autostart plan/install flow
+- Keeps repo-local evidence in `<repo>/.contextwhere/contextwhere.sqlite3`.
+- Keeps reusable scoped memory in the global home: `~/.contextwhere/` on Linux/macOS or `%USERPROFILE%\.contextwhere\` on Windows.
+- Registers workspaces and repositories in the global registry.
+- Stores Context Cards by scope: `global`, `workspace`, `repository`, or `machine`.
+- Captures sanitized signals such as blockers, tool failures, environment facts, corrections, session summaries, and verified successes.
+- Builds preflight context from active, non-expired cards before repeated work.
+- Creates draft documentation updates first; `apply` is explicit and audited.
+- Installs small advisory bridges for Codex, Claude, and Gemini only when requested.
 
-## 왜 만드는가
+It does not edit raw mail, documents, prompt logs, or provider state. Provider text is evidence, not instructions.
 
-작업 맥락은 여러 repo의 `.omx`, agent 대화, git/GitHub, 배포/Jenkins, 메일, 문서에 흩어진다. 그 결과 agent가 실제 업무/프로젝트 맥락 없이 일반론으로 답하거나, 사용자가 매번 텍스트를 복사해 넣어야 한다.
-
-contextWhere의 목표는 다음이다.
-
-1. raw source는 source of truth로 보존한다.
-2. evidence에는 source locator, tenant/scope, sensitivity, freshness를 남긴다.
-3. Markdown wiki에는 오래 남을 compiled knowledge만 유지한다.
-4. agent가 일할 때는 모든 기억을 넣지 않고 작은 context pack을 만든다.
-5. capture/draft/lint/pack은 자동화하되, 메일 열기·문서 열기·삭제·이동·reindex·deploy trigger 같은 action은 명시 승인 없이는 실행하지 않는다.
-
-## 빠른 시작
+## Quick start from a checkout
 
 ```bash
-python -m venv .venv
-. .venv/bin/activate
-python -m pip install -U pip
-python -m pip install -e . pytest
-pytest -q
-python -m contextwhere verify --json
+uv sync
+uv run pytest -q
+uv run contextwhere setup --dry-run --json
+uv run contextwhere setup --json
+uv run contextwhere doctor --json
 ```
 
-CLI 확인:
+Register the workspace and repository:
 
 ```bash
-contextwhere --help
-contextwhere init --json
-contextwhere status --json
-contextwhere providers matrix --json
-contextwhere providers health --all --json
-contextwhere maintain --json
-contextwhere autostart plan --json
+uv run contextwhere registry register workspace /home/you/workspace --json
+uv run contextwhere registry register repository /home/you/workspace/contextWhere --workspace /home/you/workspace --json
+uv run contextwhere registry list --json
 ```
 
-Fixture 기반 안전 ingest:
+Run repo-local checks and context commands:
 
 ```bash
-contextwhere ingest --provider mailwhere --fixture tests/fixtures/mailwhere_tasks.json --json
-contextwhere query contextWhere --json
-contextwhere wiki draft --query contextWhere --output .contextwhere/drafts/wiki/latest.json --json
-contextwhere wiki apply .contextwhere/drafts/wiki/latest.json --json
-contextwhere lint --json
-contextwhere entities extract --json
-contextwhere recall create --name "contextWhere focus" --query contextWhere --json
-contextwhere backup create --output .contextwhere/backups/contextwhere-$(date +%Y%m%d).zip --json
-contextwhere status --json
+uv run contextwhere init --json
+uv run contextwhere providers matrix --json
+uv run contextwhere status --json
+uv run contextwhere context pack --query "current task" --json
+uv run contextwhere maintain --json
 ```
 
-## 운영 흐름
-
-현재 `run`은 init, MailWhere ingest, optional OfficeWhere query, entity extraction, wiki draft, lint, status를 한 번에 수행한다.
+## Context Card example
 
 ```bash
-contextwhere maintain --json
-contextwhere run --officewhere-query "explicit project or file hint" --json
+cat > /tmp/context-card.json <<'JSON'
+{
+  "card_id": "repo-check-before-release",
+  "version": "context-card-v1",
+  "type": "procedure/runbook",
+  "summary": "Run contextWhere verification before release.",
+  "scope": {"type": "repository", "key": "contextWhere"},
+  "status": "candidate",
+  "sensitivity": "internal",
+  "confidence": "medium",
+  "evidence_ids": ["manual:release-check"],
+  "source_locators": ["docs/RELEASE.md"],
+  "freshness": {"observed_at": "2026-07-29T00:00:00+00:00"},
+  "verification": {"verified_at": "2026-07-29T00:00:00+00:00", "ok": true, "method": "local smoke"},
+  "steps": ["Run pytest", "Run contextwhere verify"],
+  "success_checks": ["Both commands exit 0"]
+}
+JSON
+
+uv run contextwhere memory --scope repository:contextWhere observe --input-file /tmp/context-card.json --reason documented --json
+uv run contextwhere memory --scope repository:contextWhere list --json
+uv run contextwhere preflight --repository contextWhere --json
 ```
 
-OfficeWhere는 기본 sweep 대상이 아니다. 메일 file-link나 명시 query가 있을 때만 선택적으로 조회한다.
-패키징된 OfficeWhere는 `provider-discovery.json`에서 동적 loopback 포트를 자동 발견하며, 명시적 `--officewhere-base-url`이 있으면 그 값을 우선한다.
-
-## 안전 경계
-
-- `ingest`는 evidence DB를 갱신하며 `work_wiki`를 직접 바꾸지 않는다.
-- Provider output은 명령이 아니라 untrusted evidence다.
-- Provider health/ingest log는 raw payload를 저장하지 않는다.
-- OfficeWhere URL은 loopback/local만 허용한다.
-- raw mail body, prompt logs, full local paths, secret-like values는 기본 저장/출력 대상이 아니다.
-- OS-visible/mutating action은 자동 실행하지 않는다.
-
-## 문서
-
-- 설계: [`docs/DESIGN.md`](docs/DESIGN.md)
-- 제품 브리프/로드맵: [`docs/PRODUCT.md`](docs/PRODUCT.md)
-- Windows 11 setup: [`docs/WINDOWS.md`](docs/WINDOWS.md)
-- 설치: [`docs/INSTALL.md`](docs/INSTALL.md)
-- 운영: [`docs/OPERATIONS.md`](docs/OPERATIONS.md)
-- 스케줄: [`docs/SCHEDULES.md`](docs/SCHEDULES.md)
-- 릴리즈: [`docs/RELEASE.md`](docs/RELEASE.md)
-- Wiki 규칙: [`work_wiki/AGENTS.md`](work_wiki/AGENTS.md)
-- 현재 handoff: [`context/handoff/START_HERE.md`](context/handoff/START_HERE.md)
-
-## 다음 방향
-
-v0.15.0은 evidence/wiki/automation 기반 위에 **workspace context OS semantics**를 올렸다.
-
-- tenant/scope/source-locator vocabulary
-- provider registry for agent sessions, repo/git/GitHub, Jenkins/deploy, MailWhere, OfficeWhere
-- context pack generator
-- automatic local capture for `.omx`, agent sessions, and git evidence
-- selective OfficeWhere lookup and incremental MailWhere polling
-
-현재 설계와 보존된 계획 계약은 `docs/DESIGN.md`와
-`context/decisions/0002-workspace-context-os.md`,
-`context/decisions/0003-preserve-planning-contracts.md`를 본다.
-
-## v0.15.0 implementation note
-
-Implemented scope-first runtime semantics:
-
-- `contextwhere context pack` builds small source-backed bundles with tenant/scope filters, source locators, included reasons, and omitted-context counts.
-- `contextwhere capture-local --git --omx` captures read-only local git and `.omx` evidence with repo scope metadata.
-- `contextwhere maintain` runs safe local routine maintenance: local capture, scoped context pack, wiki lint/status summary.
-- Provider matrix now describes agent-session, repo-state, git, GitHub, Jenkins/deploy, MailWhere, OfficeWhere, and manual/wiki boundaries.
-- Graph/vector remain deferred until scoped packs are not enough.
-
-
-### Evidence inspection
+## Signals and preflight
 
 ```bash
-contextwhere evidence show <evidence_id> --json
-contextwhere evidence show --source-locator <locator> --json
+uv run contextwhere signals capture --repository contextWhere --input-json '{"type":"environment_fact","name":"python","value":"3.12","verified":true,"method":"local smoke"}' --json
+uv run contextwhere signals preflight --repository contextWhere --fingerprint <fingerprint> --json
 ```
 
-This reads sanitized local evidence rows only; provider rehydration remains explicit future work.
+Repeated tool failures can surface matching active verified procedures after the configured threshold. Verified successes create candidate procedure cards; they do not become active automatically.
 
-## Return-to-work briefing
-
-Use a thin JSON manifest to ingest a chosen absence period and generate source-backed drafts:
+## Agent integrations
 
 ```bash
-contextwhere return-to-work ingest --batch ./return-to-work.json --json
-contextwhere return-to-work brief --batch-id 2026-07-return --json
+uv run contextwhere integrations status --agent all --json
+uv run contextwhere integrations install --agent codex --dry-run --json
+uv run contextwhere integrations install --agent codex --json
 ```
 
-- Manifest items are `mailwhere_export_json`, `paste_text`, or `document`; v1 documents are limited to `.txt` and `.md`.
-- Outlook COM remains inside MailWhere. contextWhere consumes MailWhere export JSON and never calls COM directly.
-- Default retention is locator/hash provenance. `--retain-raw` explicitly copies only user-supplied files to `.contextwhere/return-to-work/raw/<batch_id>/`.
-- Briefs are stable draft artifacts at `.contextwhere/drafts/return-to-work/<batch_id>.md` and `.json`; they do not auto-apply to `work_wiki`.
-- Instruction-like imported text is inert evidence, not an executable instruction channel.
-- This additive command tree does not change `daily`, `run`, or `maintain` behavior.
+Supported agents: `codex`, `claude`, `gemini`. Installation inserts a bounded marker into that agent's user instruction file and writes one owned helper file. It creates backups and can be removed with `integrations uninstall`.
+
+## Safety boundaries
+
+- Default storage is sanitized evidence, source locators, hashes, fingerprints, and card metadata.
+- Raw mail bodies, prompt logs, full local paths, credentials, and secret-like values are rejected or redacted by default.
+- `wiki draft`, `memory draft`, and `drafts create` do not apply changes automatically.
+- `wiki apply`, `memory apply`, and `drafts apply` check trusted draft type, before-hash, target path, card status, evidence IDs, source locators, freshness, and unsafe content.
+- OfficeWhere URLs must be loopback/local.
+- Live MailWhere, OfficeWhere, GitHub, Jenkins, scheduler, and agent-integration checks remain explicit operator actions.
+
+## Documentation
+
+- [Design](docs/DESIGN.md)
+- [Product brief](docs/PRODUCT.md)
+- [Install](docs/INSTALL.md)
+- [Windows](docs/WINDOWS.md)
+- [Operations](docs/OPERATIONS.md)
+- [Release](docs/RELEASE.md)
+- [Handoff](context/handoff/START_HERE.md)
+- [v0.16.0 release notes](docs/releases/v0.16.0.md)

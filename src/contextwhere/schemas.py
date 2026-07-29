@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -32,6 +33,89 @@ def normalize_sensitivity(value: Any) -> str:
         return "internal"
     return SENSITIVITY_ALIASES.get(value.strip().lower(), "secret-like")
 
+
+
+SECRET_VALUE_PATTERNS = (
+    (re.compile(r"-----BEGIN [A-Z ]*(?:PRIVATE KEY|CERTIFICATE)[A-Z ]*-----.*?-----END [A-Z ]*(?:PRIVATE KEY|CERTIFICATE)[A-Z ]*-----", re.IGNORECASE | re.DOTALL), "<redacted-secret>"),
+    (re.compile(r"\b(?:password|passwd|pwd|token|api[_-]?key|secret|cookie)\s*[:=]\s*\S+", re.IGNORECASE), "<redacted-secret>"),
+    (re.compile(r"\bauthorization\s*:\s*bearer\s+\S+", re.IGNORECASE), "<redacted-secret>"),
+    (re.compile(r"\b(?:OPENAI_API_KEY|AWS_SECRET_ACCESS_KEY|GITHUB_TOKEN|SLACK_BOT_TOKEN)\s*=\s*\S+", re.IGNORECASE), "<redacted-secret>"),
+    (re.compile(r"(?:^|\n)From: .+\nSubject: .+", re.IGNORECASE | re.DOTALL), "<redacted-raw-message>"),
+    (re.compile(r"\b(?:full mail body|body text copied verbatim|raw document|raw mail)\b", re.IGNORECASE), "<redacted-raw-content>"),
+)
+PROMPT_LIKE_PATTERNS = (
+    re.compile(r"ignore (?:all )?(?:previous|prior|above) instructions", re.IGNORECASE),
+    re.compile(r"disregard (?:all )?(?:previous|prior|above) instructions", re.IGNORECASE),
+    re.compile(r"(?:system|developer) prompt", re.IGNORECASE),
+    re.compile(r"you are now", re.IGNORECASE),
+    re.compile(r"delete (?:the )?(?:wiki|memory|database|files)", re.IGNORECASE),
+)
+UNSAFE_WORKAROUND_PATTERNS = (
+    re.compile(r"NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*0", re.IGNORECASE),
+    re.compile(r"\b(?:curl\s+)?-k\b|\b--insecure\b", re.IGNORECASE),
+    re.compile(r"\b(?:rejectUnauthorized|verify)\s*[:=]\s*false", re.IGNORECASE),
+    re.compile(r"\b(?:bypass|disable|skip|ignore)\s+(?:tls|ssl|cert(?:ificate)?(?: verification)?|auth(?:entication|orization)?|security|scanner|verification)\b", re.IGNORECASE),
+    re.compile(r"\bignore failing security\b", re.IGNORECASE),
+)
+UNSAFE_SECRET_KEYS = {
+    "token", "access_token", "refresh_token", "password", "passwd", "pwd", "cookie", "set_cookie",
+    "private_key", "privatekey", "raw_cert", "raw_certificate", "certificate_pem", "raw_env",
+    "env_dump", "raw_body", "body", "raw_mail", "raw_email", "raw_document", "raw_doc",
+    "document_body", "mail_body", "full_body", "content_raw",
+}
+
+
+def is_unsafe_key(key: str) -> bool:
+    normalized = key.lower().replace("-", "_")
+    return normalized in UNSAFE_SECRET_KEYS or normalized.endswith(("_token", "_password", "_cookie", "_private_key"))
+
+
+def _redact_secret_values(value: str) -> str:
+    text = value
+    for pattern, replacement in SECRET_VALUE_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
+def redact_text(value: str) -> str:
+    text = _redact_secret_values(value)
+    if any(pattern.search(text) for pattern in PROMPT_LIKE_PATTERNS):
+        return "<neutralized-prompt-instruction>"
+    return text
+
+
+def redact_stored_evidence_text(value: str) -> str:
+    text = _redact_secret_values(value)
+    if any(pattern.search(text) for pattern in PROMPT_LIKE_PATTERNS):
+        return "<neutralized-prompt-instruction>"
+    return text
+
+
+def safety_messages(value: Any, path: str = "card") -> list[str]:
+    messages: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            child_path = f"{path}.{key}"
+            if is_unsafe_key(str(key)):
+                messages.append(f"unsafe secret-bearing field rejected: {child_path}")
+            messages.extend(safety_messages(child, child_path))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            messages.extend(safety_messages(child, f"{path}[{index}]"))
+    elif isinstance(value, str):
+        for pattern, _ in SECRET_VALUE_PATTERNS:
+            if pattern.search(value):
+                messages.append(f"unsafe secret-like value rejected: {path}")
+                break
+        for pattern in PROMPT_LIKE_PATTERNS:
+            if pattern.search(value):
+                messages.append(f"unsafe prompt-like instruction rejected: {path}")
+                break
+        for pattern in UNSAFE_WORKAROUND_PATTERNS:
+            if pattern.search(value):
+                messages.append(f"unsafe workaround rejected: {path}")
+                break
+    return messages
 
 ROUTING_KEYS = {
     "tenant",
@@ -94,6 +178,14 @@ class EvidenceRecord:
     metadata: dict[str, Any] = field(default_factory=dict)
     omitted_fields: list[str] = field(default_factory=list)
 
+    def __post_init__(self) -> None:
+        self.title = redact_stored_evidence_text(str(self.title or ""))
+        self.snippet = redact_stored_evidence_text(str(self.snippet or ""))
+        self.summary = redact_stored_evidence_text(str(self.summary or ""))
+        clean_metadata, omitted = sanitize_mapping(self.metadata)
+        self.metadata = clean_metadata
+        self.omitted_fields = sorted(set(self.omitted_fields + omitted))
+
     def normalized_text(self) -> str:
         return "\n".join(part for part in [self.title, self.snippet, self.summary] if part)
 
@@ -123,6 +215,8 @@ def sanitize_value(value: Any, prefix: str = "") -> tuple[Any, list[str]]:
             clean_list.append(child_clean)
             omitted.extend(child_omitted)
         return clean_list, sorted(set(omitted))
+    if isinstance(value, str):
+        return redact_text(value), []
     return value, []
 
 

@@ -1,30 +1,10 @@
-# Windows 11 setup
+# Windows 11 setup and smoke checklist
 
-contextWhere targets Windows 11 first. Use PowerShell 7+ or Windows PowerShell.
+Version: 0.16.0
 
-## User install
+Use this on a Windows 11 managed PC with PowerShell. The checklist separates local CLI checks from live provider checks so documentation does not imply unverified company-PC state.
 
-If `uv` is installed:
-
-```powershell
-uv tool install git+https://github.com/knowgyu/contextWhere.git
-contextwhere verify --json
-contextwhere maintain --json
-contextwhere autostart plan --json
-```
-
-Without `uv`, use `pipx`:
-
-```powershell
-py -m pip install --user pipx
-py -m pipx ensurepath
-pipx install git+https://github.com/knowgyu/contextWhere.git
-contextwhere verify --json
-```
-
-Open a new PowerShell if `contextwhere` is not found after install.
-
-## Development checkout
+## Install from a checkout
 
 ```powershell
 git clone https://github.com/knowgyu/contextWhere.git
@@ -32,10 +12,9 @@ cd contextWhere
 uv sync
 uv run pytest -q
 uv run contextwhere verify --json
-uv run contextwhere maintain --json
 ```
 
-If not using `uv`:
+If `uv` is unavailable:
 
 ```powershell
 py -m venv .venv
@@ -46,34 +25,85 @@ pytest -q
 contextwhere verify --json
 ```
 
-## Autostart
-
-Preview the Task Scheduler command first:
+## Global home setup
 
 ```powershell
-contextwhere autostart plan --json
+contextwhere setup --dry-run --json
+contextwhere setup --json
+contextwhere doctor --json
 ```
 
-Install only after the plan looks right:
+Expected default home: `%USERPROFILE%\.contextwhere`.
+
+## Register local scopes
 
 ```powershell
-contextwhere autostart install
+contextwhere registry register workspace C:\Users\<you>\workspace --json
+contextwhere registry register repository C:\Users\<you>\workspace\contextWhere --workspace C:\Users\<you>\workspace --json
+contextwhere registry list --json
 ```
 
-This creates a Windows Task Scheduler task named `contextWhereMaintain` that runs:
+## Managed-PC smoke checklist
+
+Run each command and keep the JSON output as release evidence.
+
+### Local-only checks
 
 ```powershell
-python -m contextwhere maintain --root <repo-or-workspace> --json
-```
-
-It is not a daemon. Python starts, runs local maintenance, then exits.
-
-## Routine commands
-
-```powershell
-contextwhere maintain --json
+contextwhere doctor --json
+contextwhere init --json
+contextwhere status --json
+contextwhere providers matrix --json
 contextwhere context pack --query "current task" --json
-contextwhere evidence show <evidence_id> --json
+contextwhere maintain --json
 ```
 
-Live MailWhere/OfficeWhere ingest remains explicit; routine autostart does not run live provider search.
+Pass criteria:
+
+- commands exit 0 unless a known optional provider is unavailable;
+- JSON includes `ok:true` for local setup/doctor/status checks;
+- paths resolve under the expected repo and `%USERPROFILE%\.contextwhere`;
+- no secret-like values, raw mail bodies, or prompt logs appear in output.
+
+### Agent bridge checks
+
+```powershell
+contextwhere integrations status --agent all --json
+contextwhere integrations install --agent codex --dry-run --json
+```
+
+Only run non-dry install when the operator approves editing that agent's user instruction file:
+
+```powershell
+contextwhere integrations install --agent codex --json
+contextwhere integrations doctor --agent codex --json
+```
+
+Repeat with `claude` or `gemini` only if those tools are installed and approved on the PC.
+
+### Live MailWhere check
+
+```powershell
+contextwhere ingest --provider mailwhere --limit 10 --json
+```
+
+Pass criteria: MailWhere is installed, command exits 0, output is sanitized JSON, and evidence count increases. If MailWhere is absent or blocked by policy, record `status:"unavailable"` as an unverified live-provider gap.
+
+### Live OfficeWhere check
+
+```powershell
+contextwhere ingest --provider officewhere --query "known project or file hint" --limit 10 --json
+```
+
+Pass criteria: OfficeWhere discovery resolves a loopback/local endpoint, command exits 0, and returned evidence is sanitized. Non-loopback URLs must be rejected.
+
+## Explicit unverified gaps
+
+As of v0.16.0 documentation prep, this repository has not verified live commands on the user's managed Windows PC. Do not claim:
+
+- live MailWhere Outlook data ingestion works on that PC;
+- live OfficeWhere packaged discovery/search works on that PC;
+- Codex/Claude/Gemini bridge installation was applied on that PC;
+- Task Scheduler autostart runs on that PC.
+
+Claim those only after saving smoke-output evidence from the target machine.

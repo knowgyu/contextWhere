@@ -31,6 +31,12 @@ from .provider_matrix import provider_matrix
 from .context_pack import build_context_pack, render_markdown
 from .local_capture import capture_git, capture_omx
 from .return_to_work import build_brief, ingest_manifest
+from .registry import list_entries, register, registry_path, resolve
+from . import memory as memory_api
+from .memory_drafts import apply_memory_draft, create_memory_draft
+from .setup import doctor_home, setup_home
+from .signals import capture_signal, preflight as signals_preflight, stable_fingerprint
+from .integrations import install as install_integrations, status as integration_status, uninstall as uninstall_integrations
 
 
 def emit(data: Any, as_json: bool = False) -> None:
@@ -644,6 +650,285 @@ def cmd_tools(args: argparse.Namespace) -> int:
     return 0 if result.get("ok") else 2
 
 
+def cmd_registry(args: argparse.Namespace) -> int:
+    try:
+        if args.registry_command == "register":
+            entry = register(args.kind, args.path, workspace=args.workspace, home=args.home)
+            result = {"ok": True, "entry": entry, "registry_path": str(registry_path(args.home))}
+        elif args.registry_command == "list":
+            result = {
+                "ok": True,
+                "entries": list_entries(args.kind, home=args.home),
+                "registry_path": str(registry_path(args.home)),
+            }
+        elif args.registry_command == "resolve":
+            entry = resolve(args.identifier, kind=args.kind, home=args.home)
+            if entry is None:
+                emit({"ok": False, "error": "registry entry not found"}, args.json)
+                return 2
+            result = {"ok": True, "entry": entry, "registry_path": str(registry_path(args.home))}
+        else:
+            raise SystemExit(f"unsupported registry command: {args.registry_command}")
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        emit({"ok": False, "error": f"registry failed: {type(exc).__name__}: {exc}"}, args.json)
+        return 2
+    emit(result, args.json)
+    return 0
+
+
+
+def _current_repository_key(value: str | None = None) -> str:
+    return value or Path.cwd().resolve().name
+
+
+def _current_machine_key(value: str | None = None) -> str:
+    return value or platform.node() or "local"
+
+
+def _memory_preflight(db_path: Path, *, repository: str | None, machine: str | None, limit: int | None) -> dict[str, Any]:
+    repository_key = _current_repository_key(repository)
+    machine_key = _current_machine_key(machine)
+    max_cards = limit if limit is not None else 8
+    cards = memory_api.preflight_lookup(db_path, repository_key=repository_key, machine_key=machine_key, limit=max_cards)
+    return {"ok": True, "scope": {"repository": repository_key, "machine": machine_key}, "cards": cards, "db_path": str(db_path)}
+
+
+def _memory_preflight_from_args(args: argparse.Namespace, db_path: Path) -> dict[str, Any]:
+    has_scope_flags = any(
+        getattr(args, name, None)
+        for name in ("scope", "scope_type", "scope_key")
+    ) or getattr(args, "registered", False)
+    repository = getattr(args, "repository", None)
+    machine = getattr(args, "machine", None)
+    if has_scope_flags:
+        scope = _memory_scope(args)
+        if scope is None:
+            raise ValueError("memory preflight scope requires --scope type:key, --scope-type/--scope-key, or --registered")
+        scope_type, scope_key = scope
+        if scope_type == "repository":
+            repository = scope_key
+        elif scope_type == "machine":
+            machine = scope_key
+        else:
+            raise ValueError(f"memory preflight supports repository or machine scope, not {scope_type or 'empty'}")
+    return _memory_preflight(db_path, repository=repository, machine=machine, limit=getattr(args, "limit", None))
+
+def _read_json_arg(args: argparse.Namespace) -> dict[str, Any]:
+    if getattr(args, "input_file", None):
+        return json.loads(Path(args.input_file).read_text(encoding="utf-8"))
+    if getattr(args, "input_json", None):
+        return json.loads(args.input_json)
+    return {}
+
+
+def _memory_db(home: str | None) -> Path:
+    from .config import resolve_global_home
+
+    base = Path(home).expanduser().resolve() if home else resolve_global_home()
+    return base / "contextwhere.sqlite3"
+
+
+def _parse_scope(value: str | None) -> tuple[str, str] | None:
+    if not value:
+        return None
+    if ":" not in value:
+        raise ValueError("--scope must be type:key")
+    scope_type, scope_key = value.split(":", 1)
+    return scope_type, scope_key
+
+
+def _memory_scope(args: argparse.Namespace, payload: dict[str, Any] | None = None) -> tuple[str, str] | None:
+    parsed = _parse_scope(getattr(args, "scope", None))
+    if parsed:
+        return parsed
+    if getattr(args, "registered", False):
+        entry = resolve(args.root, home=args.home)
+        if entry is None:
+            raise ValueError("registered scope not found; run registry register first")
+        return str(entry["kind"]), str(entry["id"])
+    if getattr(args, "scope_type", None) and getattr(args, "scope_key", None):
+        return args.scope_type, args.scope_key
+    if getattr(args, "repository", None):
+        return "repository", args.repository
+    if payload and payload.get("scope"):
+        scope = payload["scope"]
+        if isinstance(scope, dict):
+            return str(scope.get("type") or ""), str(scope.get("key") or "")
+        return _parse_scope(str(scope))
+    return None
+
+def _with_scope(payload: dict[str, Any], scope_type: str, scope_key: str) -> dict[str, Any]:
+    data = dict(payload)
+    data.setdefault("scope", {"type": scope_type, "key": scope_key})
+    return data
+
+
+def _promote_status(status: str) -> str:
+    if status == "observed":
+        return "candidate"
+    if status in {"candidate", "needs_review"}:
+        return "active"
+    return status
+
+
+def cmd_memory(args: argparse.Namespace) -> int:
+    db_path = _memory_db(args.home)
+    try:
+        if args.memory_command == "preflight":
+            result = _memory_preflight_from_args(args, db_path)
+        elif args.memory_command in {"observe", "create"}:
+            payload = _read_json_arg(args)
+            scope = _memory_scope(args, payload)
+            if scope is None:
+                raise ValueError("memory observe/create requires payload scope, --scope, --registered, or --repository")
+            scope_type, scope_key = scope
+            payload = _with_scope(payload, scope_type, scope_key)
+            payload.setdefault("status", "observed" if args.memory_command == "observe" else "candidate")
+            card_id = memory_api.upsert_card(db_path, payload, actor="contextwhere-cli", reason=args.reason or args.memory_command)
+            result = {"ok": True, "card": memory_api.get_card(db_path, card_id), "audit": memory_api.audit_rows(db_path, card_id), "db_path": str(db_path)}
+        elif args.memory_command == "list":
+            scope = _memory_scope(args)
+            if scope is None:
+                raise ValueError("memory list requires --scope, --registered, or --repository")
+            scope_type, scope_key = scope
+            cards = memory_api.list_cards(db_path, scope_type=scope_type, scope_key=scope_key, status=args.status, limit=args.limit)
+            order = {"active": 0, "candidate": 1, "needs_review": 2, "observed": 3, "stale": 4, "superseded": 5, "rejected": 6}
+            cards.sort(key=lambda item: (order.get(item.get("status"), 99), item.get("card_id", "")))
+            result = {"ok": True, "cards": cards, "db_path": str(db_path)}
+        elif args.memory_command == "show":
+            card = memory_api.get_card(db_path, args.card_id)
+            if card is None:
+                emit({"ok": False, "error": "card not found", "code": "card_not_found"}, args.json)
+                return 2
+            result = {"ok": True, "card": card, "audit": memory_api.audit_rows(db_path, args.card_id), "db_path": str(db_path)}
+        elif args.memory_command == "promote":
+            card = memory_api.get_card(db_path, args.card_id)
+            if card is None:
+                emit({"ok": False, "error": "card not found", "code": "card_not_found"}, args.json)
+                return 2
+            target = args.to or _promote_status(card["status"])
+            memory_api.transition_card(db_path, args.card_id, target, reason=args.reason or "promote", actor="contextwhere-cli")
+            result = {"ok": True, "card": memory_api.get_card(db_path, args.card_id), "audit": memory_api.audit_rows(db_path, args.card_id), "db_path": str(db_path)}
+        elif args.memory_command == "reject":
+            memory_api.transition_card(db_path, args.card_id, "rejected", reason=args.reason or "reject", actor="contextwhere-cli")
+            result = {"ok": True, "card": memory_api.get_card(db_path, args.card_id), "audit": memory_api.audit_rows(db_path, args.card_id), "db_path": str(db_path)}
+        elif args.memory_command == "supersede":
+            payload = _read_json_arg(args)
+            scope = _memory_scope(args, payload)
+            if scope is not None:
+                payload = _with_scope(payload, *scope)
+            card_id = memory_api.supersede_card(db_path, args.card_id, payload, actor="contextwhere-cli", reason=args.reason or "supersede")
+            old_card = memory_api.get_card(db_path, args.card_id)
+            new_card = memory_api.get_card(db_path, card_id)
+            result = {"ok": True, "old": old_card, "new": new_card, "old_card": old_card, "new_card": new_card, "audit": memory_api.audit_events(db_path), "db_path": str(db_path)}
+        elif args.memory_command == "draft":
+            home = db_path.parent
+            draft = create_memory_draft(db_path, card_id=args.card_id, root=Path(getattr(args, "root", ".")), home=home, supersede=getattr(args, "supersede", None))
+            output = getattr(args, "output", None)
+            if output:
+                target = Path(output)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(draft.read_text(encoding="utf-8"), encoding="utf-8")
+                draft = target
+            result = {"ok": True, "draft_path": str(draft), "draft": json.loads(draft.read_text(encoding="utf-8")), "note": "memory drafts are not applied automatically", "db_path": str(db_path)}
+        elif args.memory_command == "apply":
+            home = db_path.parent
+            audit = apply_memory_draft(Path(args.draft), db_path=db_path, root=Path(getattr(args, "root", ".")), home=home)
+            audit_data = json.loads(audit.read_text(encoding="utf-8"))
+            result = {"ok": audit_data["status"] == "applied", "audit_path": str(audit), "audit": audit_data, "db_path": str(db_path)}
+        else:
+            raise SystemExit(f"unsupported memory command: {args.memory_command}")
+    except (OSError, ValueError, json.JSONDecodeError, KeyError) as exc:
+        emit({"ok": False, "error": str(exc), "code": type(exc).__name__}, args.json)
+        return 2
+    emit(result, args.json)
+    return 0 if result.get("ok") else 2
+
+
+def cmd_preflight(args: argparse.Namespace) -> int:
+    db_path = _memory_db(args.home)
+    result = _memory_preflight(db_path, repository=args.repository, machine=args.machine, limit=args.limit)
+    emit(result, args.json)
+    return 0
+
+
+def _signal_db(args: argparse.Namespace) -> Path:
+    return _memory_db(getattr(args, "home", None))
+
+
+def cmd_signals(args: argparse.Namespace) -> int:
+    db_path = _signal_db(args)
+    try:
+        if args.signals_command == "fingerprint":
+            payload = _read_json_arg(args)
+            result = {"ok": True, "fingerprint": stable_fingerprint(payload)}
+        elif args.signals_command == "capture":
+            payload = _read_json_arg(args)
+            result = capture_signal(db_path, payload, repository=args.repository, machine=args.machine, threshold=args.threshold)
+            result["db_path"] = str(db_path)
+        elif args.signals_command == "preflight":
+            result = signals_preflight(db_path, repository=args.repository, machine=args.machine, fingerprint=args.fingerprint, threshold=args.threshold)
+            result["db_path"] = str(db_path)
+        else:
+            raise SystemExit(f"unsupported signals command: {args.signals_command}")
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        emit({"ok": False, "error": str(exc), "code": type(exc).__name__}, args.json)
+        return 2
+    emit(result, args.json)
+    return 0 if result.get("ok") else 2
+
+
+
+
+def cmd_drafts(args: argparse.Namespace) -> int:
+    db_path = _memory_db(args.home)
+    home = db_path.parent
+    try:
+        if args.drafts_command == "create":
+            draft = create_memory_draft(db_path, card_id=args.card_id, root=Path(args.root), home=home, supersede=getattr(args, "supersede", None))
+            result = {"ok": True, "status": "draft", "draft_path": str(draft), "draft": json.loads(draft.read_text(encoding="utf-8")), "note": "memory drafts are not applied automatically"}
+        elif args.drafts_command == "apply":
+            audit = apply_memory_draft(Path(args.draft), db_path=db_path, root=Path(args.root), home=home)
+            audit_data = json.loads(audit.read_text(encoding="utf-8"))
+            issues = [{"message": reason} for reason in audit_data.get("refused_reasons", [])]
+            result = {"ok": audit_data["status"] == "applied", "status": audit_data["status"], "audit_path": str(audit), "audit": audit_data, "refused_reasons": audit_data.get("refused_reasons", []), "issues": issues}
+        else:
+            raise SystemExit(f"unsupported drafts command: {args.drafts_command}")
+    except (OSError, ValueError, json.JSONDecodeError, KeyError) as exc:
+        emit({"ok": False, "error": str(exc), "refused_reasons": [str(exc)], "code": type(exc).__name__}, args.json)
+        return 2
+    emit(result, args.json)
+    return 0 if result.get("ok") else 2
+
+def cmd_integrations(args: argparse.Namespace) -> int:
+    try:
+        if args.integrations_command == "status":
+            result = integration_status(args.home, agent=args.agent)
+        elif args.integrations_command == "doctor":
+            result = integration_status(args.home, agent=args.agent, doctor=True)
+        elif args.integrations_command == "install":
+            result = install_integrations(args.home, agent=args.agent, dry_run=args.dry_run)
+        elif args.integrations_command == "uninstall":
+            result = uninstall_integrations(args.home, agent=args.agent, dry_run=args.dry_run)
+        else:
+            raise SystemExit(f"unsupported integrations command: {args.integrations_command}")
+    except ValueError as exc:
+        emit({"ok": False, "error": str(exc)}, args.json)
+        return 2
+    emit(result, args.json)
+    return 0 if result.get("ok") else 2
+
+def cmd_setup(args: argparse.Namespace) -> int:
+    result = setup_home(args.home, dry_run=args.dry_run, install_agent_bridges=getattr(args, "install_integrations", False))
+    emit(result, args.json)
+    return 0 if result.get("ok") else 2
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    result = doctor_home(args.home)
+    emit(result, args.json)
+    return 0 if result.get("ok") else 2
+
 def add_common(p: argparse.ArgumentParser) -> None:
     p.add_argument("--json", action="store_true")
     p.add_argument("--root", dest="root_override")
@@ -845,6 +1130,182 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--input-json")
     p.add_argument("--input-file")
     p.set_defaults(func=cmd_tools)
+
+    registry = sub.add_parser("registry")
+    add_common(registry)
+    registry.add_argument("--home")
+    registry_sub = registry.add_subparsers(dest="registry_command", required=True)
+    p = registry_sub.add_parser("register")
+    add_common(p)
+    p.add_argument("kind", choices=["workspace", "repository"])
+    p.add_argument("path", nargs="?", default=".")
+    p.add_argument("--workspace")
+    p.add_argument("--home", default=argparse.SUPPRESS)
+    p.set_defaults(func=cmd_registry)
+    p = registry_sub.add_parser("list")
+    add_common(p)
+    p.add_argument("kind", nargs="?", choices=["workspace", "repository"])
+    p.add_argument("--home", default=argparse.SUPPRESS)
+    p.set_defaults(func=cmd_registry)
+    p = registry_sub.add_parser("resolve")
+    add_common(p)
+    p.add_argument("identifier")
+    p.add_argument("--kind", choices=["workspace", "repository"])
+    p.add_argument("--home", default=argparse.SUPPRESS)
+    p.set_defaults(func=cmd_registry)
+
+
+    drafts = sub.add_parser("drafts")
+    drafts_sub = drafts.add_subparsers(dest="drafts_command", required=True)
+    p = drafts_sub.add_parser("create")
+    p.add_argument("--home")
+    p.add_argument("--root", default=".")
+    p.add_argument("--card-id", required=True)
+    p.add_argument("--supersede", action="append", default=[])
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_drafts)
+    p = drafts_sub.add_parser("apply")
+    p.add_argument("draft")
+    p.add_argument("--home")
+    p.add_argument("--root", default=".")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_drafts)
+
+    memory = sub.add_parser("memory")
+    memory.add_argument("--home")
+    memory.add_argument("--registered", action="store_true")
+    memory.add_argument("--scope")
+    memory.add_argument("--scope-type", choices=["global", "workspace", "repository", "machine"])
+    memory.add_argument("--scope-key")
+    memory.add_argument("--repository")
+    memory_sub = memory.add_subparsers(dest="memory_command", required=True)
+
+    def add_memory_common(p: argparse.ArgumentParser) -> None:
+        p.add_argument("--json", action="store_true")
+        p.add_argument("--root", default=".")
+        p.add_argument("--home", default=argparse.SUPPRESS)
+        p.add_argument("--registered", action="store_true", default=argparse.SUPPRESS)
+        p.add_argument("--scope", default=argparse.SUPPRESS)
+        p.add_argument("--scope-type", choices=["global", "workspace", "repository", "machine"], default=argparse.SUPPRESS)
+        p.add_argument("--scope-key", default=argparse.SUPPRESS)
+        p.add_argument("--repository", default=argparse.SUPPRESS)
+
+    for action in ("observe", "create"):
+        p = memory_sub.add_parser(action)
+        add_memory_common(p)
+        p.add_argument("--input-json")
+        p.add_argument("--input-file")
+        p.add_argument("--reason", default="")
+        p.set_defaults(func=cmd_memory)
+    p = memory_sub.add_parser("list")
+    add_memory_common(p)
+    p.add_argument("--status")
+    p.add_argument("--limit", type=int, default=50)
+    p.set_defaults(func=cmd_memory)
+    p = memory_sub.add_parser("show")
+    add_memory_common(p)
+    p.add_argument("card_id")
+    p.add_argument("--audit", action="store_true")
+    p.set_defaults(func=cmd_memory)
+    p = memory_sub.add_parser("promote")
+    add_memory_common(p)
+    p.add_argument("card_id")
+    p.add_argument("--status", "--to", dest="to", choices=["candidate", "needs_review", "active", "stale"])
+    p.add_argument("--reason", default="")
+    p.set_defaults(func=cmd_memory)
+    p = memory_sub.add_parser("reject")
+    add_memory_common(p)
+    p.add_argument("card_id")
+    p.add_argument("--reason", default="")
+    p.set_defaults(func=cmd_memory)
+    p = memory_sub.add_parser("supersede")
+    add_memory_common(p)
+    p.add_argument("card_id")
+    p.add_argument("--input-json")
+    p.add_argument("--input-file")
+    p.add_argument("--reason", default="")
+    p.set_defaults(func=cmd_memory)
+    p = memory_sub.add_parser("draft")
+    add_memory_common(p)
+    p.add_argument("card_id")
+    p.add_argument("--output")
+    p.add_argument("--supersede", action="append", default=[])
+    p.set_defaults(func=cmd_memory)
+    p = memory_sub.add_parser("apply")
+    add_memory_common(p)
+    p.add_argument("draft")
+    p.set_defaults(func=cmd_memory)
+    p = memory_sub.add_parser("preflight")
+    add_memory_common(p)
+    p.add_argument("--machine")
+    p.add_argument("--limit", type=int, default=8)
+    p.set_defaults(func=cmd_memory)
+
+
+    signals = sub.add_parser("signals")
+    signals.add_argument("--home")
+    signals.add_argument("--repository")
+    signals.add_argument("--machine")
+    signals.add_argument("--threshold", type=int, default=2)
+    signals.add_argument("--json", action="store_true")
+    signals_sub = signals.add_subparsers(dest="signals_command", required=True)
+    for action in ("capture", "fingerprint"):
+        p = signals_sub.add_parser(action)
+        p.add_argument("--home", default=argparse.SUPPRESS)
+        p.add_argument("--repository", default=argparse.SUPPRESS)
+        p.add_argument("--machine", default=argparse.SUPPRESS)
+        p.add_argument("--threshold", type=int, default=2)
+        p.add_argument("--json", action="store_true")
+        p.add_argument("--input-json")
+        p.add_argument("--input-file")
+        p.set_defaults(func=cmd_signals)
+    p = signals_sub.add_parser("preflight")
+    p.add_argument("--home", default=argparse.SUPPRESS)
+    p.add_argument("--repository", default=argparse.SUPPRESS)
+    p.add_argument("--machine", default=argparse.SUPPRESS)
+    p.add_argument("--threshold", type=int, default=2)
+    p.add_argument("--fingerprint")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_signals)
+
+    p = sub.add_parser("preflight")
+    p.add_argument("--json", action="store_true")
+    p.add_argument("--home")
+    p.add_argument("--repository")
+    p.add_argument("--machine")
+    p.add_argument("--limit", type=int, default=8)
+    p.set_defaults(func=cmd_preflight)
+
+
+    integrations = sub.add_parser("integrations")
+    integrations.add_argument("--home")
+    integrations.add_argument("--json", action="store_true")
+    integrations.add_argument("--agent", choices=["all", "codex", "claude", "gemini"], default="all")
+    integrations_sub = integrations.add_subparsers(dest="integrations_command", required=True)
+    for action in ("status", "doctor", "install", "uninstall"):
+        p = integrations_sub.add_parser(action)
+        p.add_argument("--home", default=argparse.SUPPRESS)
+        p.add_argument("--json", action="store_true")
+        p.add_argument("--agent", choices=["all", "codex", "claude", "gemini"], default="all")
+        if action in {"install", "uninstall"}:
+            p.add_argument("--dry-run", action="store_true")
+        else:
+            p.set_defaults(dry_run=False)
+        p.set_defaults(func=cmd_integrations)
+
+    p = sub.add_parser("setup")
+    p.add_argument("--home")
+    p.add_argument("--root", default=".")
+    p.add_argument("--json", action="store_true")
+    p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--install-integrations", action="store_true")
+    p.set_defaults(func=cmd_setup)
+
+    p = sub.add_parser("doctor")
+    p.add_argument("--home")
+    p.add_argument("--root", default=".")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_doctor)
 
     wiki = sub.add_parser("wiki")
     wiki_sub = wiki.add_subparsers(dest="wiki_command", required=True)
