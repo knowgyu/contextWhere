@@ -33,6 +33,29 @@ uv run contextwhere setup --json
 uv run contextwhere doctor --json
 ```
 
+## Using with MailWhere and OfficeWhere
+
+contextWhere can run alongside MailWhere and OfficeWhere as a local-first
+context companion. Keep the tools on the same PC; contextWhere does not upload
+provider data or start provider access by itself.
+
+For the current `v0.16.0` release, install from this checkout (the commands
+above), then use this small setup sequence:
+
+1. Install or update MailWhere and OfficeWhere from their own release channels
+   if you need those providers.
+2. Run `contextwhere setup --json` and `contextwhere doctor --json`.
+3. Preview an agent bridge with `contextwhere integrations install --agent codex --dry-run --json`; install only after reviewing the reported path.
+4. Run MailWhere or OfficeWhere ingest/search only when you explicitly need
+   provider evidence. Normal agent preflight reads only scoped active cards.
+
+## Distribution status
+
+The intended next installer is a Windows portable companion bundle with
+checksums and a local Codex plugin. It is **not yet a released asset**. Public
+npm publication is deferred; `uv` remains the contributor and current
+checkout-install tool until the portable bundle exists.
+
 Register the workspace and repository:
 
 ```bash
