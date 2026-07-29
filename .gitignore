@@ -6,6 +6,4 @@ __pycache__/
 .contextwhere/
 dist/
 build/
-.omx/logs/
-.omx/state/
-.omx/metrics.json
+.omx/

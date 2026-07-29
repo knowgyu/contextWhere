@@ -38,7 +38,7 @@ Raw providers/work surfaces
 
 ## Current implementation snapshot
 
-The current code version is `0.15.1`. It has a Python/SQLite CLI, scoped evidence ingest, MailWhere/OfficeWhere provider adapters, packaged OfficeWhere discovery, wiki draft/apply boundaries, lint, session and local git/`.omx` capture, deterministic entity extraction, recall bundles, backup/restore, provider matrix, context packs, `run`/`daily`/`maintain`, autostart planning, and return-to-work drafts.
+The current code version is `0.15.2`. It has a Python/SQLite CLI, scoped evidence ingest, MailWhere/OfficeWhere provider adapters, packaged OfficeWhere discovery, wiki draft/apply boundaries, lint, session and local git/`.omx` capture, deterministic entity extraction, recall bundles, backup/restore, provider matrix, context packs, `run`/`daily`/`maintain`, autostart planning, and return-to-work drafts.
 
 `docs/DESIGN.md` is the canonical architecture source. Repository tags and GitHub Releases are the release source of truth; ignored `.omx` state and older handoffs do not override current tracked docs.
 
@@ -54,7 +54,7 @@ The current code version is `0.15.1`. It has a Python/SQLite CLI, scoped evidenc
 - `docs/PRODUCT.md` — product brief and roadmap.
 - `context/decisions/0001-project-direction.md` — original wiki/evidence decision.
 - `context/decisions/0002-workspace-context-os.md` — corrected product boundary.
-- `.omx/plans/prd-contextwhere-workspace-context-os-*.md` — current ralplan PRD.
+- `context/decisions/0003-preserve-planning-contracts.md` — durable contracts condensed from the retired generated OMX plans.
 
 ## Current scope-first implementation
 

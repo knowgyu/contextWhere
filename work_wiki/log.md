@@ -8,7 +8,7 @@ Initialized contextWhere folder from autoresearch discussion. Copied research re
 
 - Added Python/SQLite CLI skeleton for `init`, provider health/manifest, fixture/live ingest, query, wiki lint, wiki draft/apply, and capture-session.
 - Added safety boundary: ingest does not mutate `work_wiki`; wiki mutation is only via constrained audited `wiki apply`.
-- Evidence: `.omx/plans/ralplan-contextwhere-0.1.0-20260702T150136Z.md`, tests under `tests/`.
+- Evidence: `context/decisions/0003-preserve-planning-contracts.md`, tests under `tests/`.
 
 ## 2026-07-03 — contextWhere 0.1.1 operational verification
 
@@ -60,7 +60,7 @@ Initialized contextWhere folder from autoresearch discussion. Copied research re
 - Reframed contextWhere from MailWhere/OfficeWhere-centered memory into a workspace context OS.
 - Added tenant/scope/source-locator/context-pack language to durable docs and wiki rules.
 - Preserved MailWhere and OfficeWhere as providers, not product boundary.
-- Evidence: `docs/DESIGN.md`, `context/decisions/0002-workspace-context-os.md`, `.omx/plans/prd-contextwhere-workspace-context-os-20260703T101943Z.md`.
+- Evidence: `docs/DESIGN.md`, `context/decisions/0002-workspace-context-os.md`.
 
 ## 2026-07-29 — provider ownership and legacy wrapper review
 
@@ -75,3 +75,10 @@ Initialized contextWhere folder from autoresearch discussion. Copied research re
 - Kept explicit loopback URL overrides and stale-discovery fallback.
 - Closed the last unique `where-skills` runtime gap so the standalone wrapper can remain archived.
 - Evidence: `src/contextwhere/providers/officewhere.py`, `tests/test_contextwhere.py`, `docs/releases/v0.15.1.md`.
+
+## 2026-07-29 — generated planning surfaces retired
+
+- Condensed durable writer-boundary, provider-unavailable, fixture-flow, and scope-safety contracts into Decision 0003.
+- Removed tracked generated `.omx` plans/reviews and ignored future local OMX runtime state.
+- Corrected current product docs to record `where-skills` as already retired.
+- Evidence: `context/decisions/0003-preserve-planning-contracts.md`, `docs/releases/v0.15.2.md`.

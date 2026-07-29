@@ -1,6 +1,6 @@
 # contextWhere install and quick start
 
-contextWhere 0.15.1 targets Windows 11 first, with Ubuntu supported. It is a local-first Python/SQLite CLI workspace context OS slice. Provider ingest is read-only; wiki writes happen only through audited `wiki apply` drafts.
+contextWhere 0.15.2 targets Windows 11 first, with Ubuntu supported. It is a local-first Python/SQLite CLI workspace context OS slice. Provider ingest is read-only; wiki writes happen only through audited `wiki apply` drafts.
 
 ## Requirements
 

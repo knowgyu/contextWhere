@@ -2,11 +2,12 @@
 type: project
 status: active
 sensitivity: internal
-source_count: 4
+source_count: 5
 evidence_ids:
   - autoresearch:2026-work-context-llm-wiki-report
   - decision:0001-project-direction
   - decision:0002-workspace-context-os
+  - decision:0003-preserve-planning-contracts
   - local:contextWhere/docs/DESIGN.md
 last_verified: 2026-07-29
 stale_after: 2026-10-29
@@ -35,7 +36,7 @@ Use this order:
 
 ## Current foundation status
 
-The current `0.15.1` code provides the scoped evidence ledger, provider ingest, OfficeWhere packaged discovery, wiki draft/apply boundaries, context packs, session and local git/`.omx` capture, recall/backup/status, `run`/`daily`/`maintain`, autostart planning, and return-to-work drafts.
+The current `0.15.2` code provides the scoped evidence ledger, provider ingest, OfficeWhere packaged discovery, wiki draft/apply boundaries, context packs, session and local git/`.omx` capture, recall/backup/status, `run`/`daily`/`maintain`, autostart planning, and return-to-work drafts.
 
 ## Remaining product goal
 

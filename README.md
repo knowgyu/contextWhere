@@ -6,7 +6,7 @@ MailWhere와 OfficeWhere는 중요한 provider지만, 제품의 전체 경계는
 
 ## 현재 릴리즈
 
-- 최신 로컬 버전: **0.15.1**
+- 최신 로컬 버전: **0.15.2**
 - 원격 저장소: <https://github.com/knowgyu/contextWhere>
 - 기본 브랜치: `main`
 
@@ -117,7 +117,9 @@ v0.15.0은 evidence/wiki/automation 기반 위에 **workspace context OS semanti
 - automatic local capture for `.omx`, agent sessions, and git evidence
 - selective OfficeWhere lookup and incremental MailWhere polling
 
-자세한 실행 계획은 `.omx/plans/prd-contextwhere-workspace-context-os-*.md`를 본다.
+현재 설계와 보존된 계획 계약은 `docs/DESIGN.md`와
+`context/decisions/0002-workspace-context-os.md`,
+`context/decisions/0003-preserve-planning-contracts.md`를 본다.
 
 ## v0.15.0 implementation note
 
