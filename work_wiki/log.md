@@ -61,3 +61,10 @@ Initialized contextWhere folder from autoresearch discussion. Copied research re
 - Added tenant/scope/source-locator/context-pack language to durable docs and wiki rules.
 - Preserved MailWhere and OfficeWhere as providers, not product boundary.
 - Evidence: `docs/DESIGN.md`, `context/decisions/0002-workspace-context-os.md`, `.omx/plans/prd-contextwhere-workspace-context-os-20260703T101943Z.md`.
+
+## 2026-07-29 — provider ownership and legacy wrapper review
+
+- Confirmed MailWhere owns Outlook mirror/search, OfficeWhere owns document indexing/search, and contextWhere owns cross-provider evidence/wiki/context packs.
+- Replaced live wiki evidence links to `where-skills` with current product contracts.
+- Marked `where-skills` as an archive candidate, blocked only by the unresolved OfficeWhere dynamic-port discovery consumer gap.
+- Evidence: `docs/DESIGN.md`, `MailWhere/docs/ARCHITECTURE.md`, `OfficeWhere/docs/provider-contract.md`.

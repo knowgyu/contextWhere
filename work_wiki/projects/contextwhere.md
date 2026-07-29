@@ -2,13 +2,14 @@
 type: project
 status: active
 sensitivity: internal
-source_count: 3
+source_count: 4
 evidence_ids:
   - autoresearch:2026-work-context-llm-wiki-report
   - decision:0001-project-direction
   - decision:0002-workspace-context-os
-last_verified: 2026-07-03
-stale_after: 2026-08-03
+  - local:contextWhere/docs/DESIGN.md
+last_verified: 2026-07-29
+stale_after: 2026-10-29
 confidence: high
 related:
   - ../systems/mailwhere.md
@@ -34,14 +35,11 @@ Use this order:
 
 ## Current foundation status
 
-v0.10.0 provides Python/SQLite CLI foundations: provider ingest, wiki draft/apply boundaries, lint, capture-session, entities, recall bundles, backup/restore, status, `run`/`daily`, autostart planning, and MailWhere file-link evidence.
+The current `0.15.0` code provides the scoped evidence ledger, provider ingest, wiki draft/apply boundaries, context packs, session and local git/`.omx` capture, recall/backup/status, `run`/`daily`/`maintain`, autostart planning, and return-to-work drafts.
 
-## Next product goal
+## Remaining product goal
 
-Reframe the next slice around workspace context OS semantics:
-
-- tenant/scope/source-locator vocabulary;
-- provider registry for agent sessions, repo/git/GitHub, Jenkins/deploy, MailWhere, OfficeWhere;
-- context pack generation;
-- automatic local capture for `.omx` and agent-session evidence;
-- selective OfficeWhere lookup rather than full document mirroring.
+- validate live MailWhere/OfficeWhere paths on the managed Windows PC;
+- decide OfficeWhere dynamic-port discovery before retiring `where-skills`;
+- add approved read-only GitHub/Jenkins providers;
+- keep OfficeWhere selective and graph/vector optional.

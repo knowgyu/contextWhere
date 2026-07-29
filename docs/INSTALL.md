@@ -97,7 +97,7 @@ OfficeWhere search is opt-in and must be loopback/local:
 contextwhere run --officewhere-base-url http://127.0.0.1:18765 --officewhere-query "file or project hint from mail" --json
 ```
 
-Missing providers return structured `status:"unavailable"` entries and are safe to continue. Non-loopback OfficeWhere URLs are rejected as `unsafe_url`.
+Packaged OfficeWhere normally uses a dynamic loopback port. contextWhere does not yet read `provider-discovery.json`, so pass the current validated base URL explicitly. Missing providers return structured `status:"unavailable"` entries and are safe to continue. Non-loopback OfficeWhere URLs are rejected as `unsafe_url`.
 
 ## Routine maintenance
 

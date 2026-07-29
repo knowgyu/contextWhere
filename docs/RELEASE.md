@@ -1,6 +1,6 @@
 # contextWhere release guide
 
-## 0.1.x release checklist
+## Release checklist
 
 1. Verify version alignment:
    - `pyproject.toml` `[project].version`
@@ -11,6 +11,7 @@
    pytest -q
    python -m contextwhere verify --json
    ```
+   `verify` must report every current smoke step as passed, including evidence inspection, context pack, local capture, and maintenance.
 3. Run smoke flow in a temporary root:
    ```bash
    TMP=$(mktemp -d)

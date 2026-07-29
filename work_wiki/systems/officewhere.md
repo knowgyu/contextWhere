@@ -2,12 +2,13 @@
 type: system
 status: active
 sensitivity: confidential
-source_count: 2
+source_count: 3
 evidence_ids:
-  - local:where-skills/docs/officewhere-provider-notes.md
+  - local:OfficeWhere/docs/provider-contract.md
   - decision:0002-workspace-context-os
-last_verified: 2026-07-03
-stale_after: 2026-08-03
+  - local:contextWhere/src/contextwhere/providers/officewhere.py
+last_verified: 2026-07-29
+stale_after: 2026-10-29
 confidence: high
 related:
   - ../projects/contextwhere.md
@@ -29,3 +30,5 @@ OfficeWhere should provide selective document evidence:
 ## Integration stance
 
 Do not mirror the full document corpus into contextWhere. Do not store raw document bodies or sensitive full local paths by default. Do not run open/show/reindex/rescan/delete automatically.
+
+Packaged OfficeWhere uses a dynamic loopback port. contextWhere currently requires an explicit validated `--officewhere-base-url`; automatic `provider-discovery.json` consumption remains the only unique `where-skills` helper gap.

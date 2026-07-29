@@ -31,26 +31,21 @@ It is not a generic vector database, not a MailWhere/OfficeWhere-only app, and n
 - Recall bundles, backup/restore, status, `run`/`daily`, and autostart planning.
 - MailWhere file-link evidence and selective OfficeWhere policy.
 
-## Corrected roadmap
+## Delivered evolution and remaining roadmap
 
-### 0.11.x — workspace context OS semantics
+### Delivered: workspace context OS semantics
 
-- Add tenant/scope/source-locator vocabulary to evidence and generated artifacts.
-- Add provider registry entries for agent sessions, repo/git/GitHub, Jenkins/deploy, MailWhere, and OfficeWhere.
-- Add context pack generation as the main runtime output.
-- Update docs/install flow so the product feels plugin-like after first approval.
+- Tenant/scope/source-locator vocabulary in evidence and generated artifacts.
+- Provider registry entries for agent sessions, repo/git/GitHub, Jenkins/deploy, MailWhere, and OfficeWhere.
+- Context pack generation as the main runtime output.
+- Local `.omx`/git capture and safe `maintain` automation.
 
-### 0.12.x — automatic local capture
+### Remaining: provider completion
 
-- Capture `.omx` plans/logs/state and Codex/OMX session summaries from local files.
-- Add import surfaces for Claude Code and Gemini logs where locally available.
-- Add git commit/branch/tag/diff evidence capture.
-- Keep raw prompts and sensitive local paths redacted by default.
-
-### 0.13.x — external work-system providers
-
+- Add Claude Code and Gemini imports where local formats are stable.
 - Add GitHub issue/PR/release evidence through explicit auth/config.
 - Add Jenkins/deploy runbook/job evidence through read-only provider contracts.
+- Decide OfficeWhere packaged discovery support before retiring the legacy `where-skills` checkout.
 - Keep build/deploy triggers action-gated.
 
 ### 1.0 — stable local-first context platform

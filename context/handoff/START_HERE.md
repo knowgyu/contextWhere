@@ -38,19 +38,16 @@ Raw providers/work surfaces
 
 ## Current implementation snapshot
 
-As of v0.11.0, contextWhere has a Python/SQLite CLI, evidence ingest, MailWhere/OfficeWhere provider adapters, wiki draft/apply boundaries, lint, session capture, deterministic entity extraction, recall bundles, backup/restore, status, provider matrix, `run`/`daily`, and autostart planning.
+The current code version is `0.15.0`. It has a Python/SQLite CLI, scoped evidence ingest, MailWhere/OfficeWhere provider adapters, wiki draft/apply boundaries, lint, session and local git/`.omx` capture, deterministic entity extraction, recall bundles, backup/restore, provider matrix, context packs, `run`/`daily`/`maintain`, autostart planning, and return-to-work drafts.
 
-The mismatch to fix next is product framing and routing depth: current docs and implementation are still weighted toward MailWhere/OfficeWhere, while the final goal requires workspace-wide providers, tenant/scope policy, and context pack generation.
+`docs/DESIGN.md` is the canonical architecture source. Repository tags and GitHub Releases are the release source of truth; ignored `.omx` state and older handoffs do not override current tracked docs.
 
-## Next recommended plan
+## Remaining bounded gaps
 
-Implement the next slice as **scope-first context OS**:
-
-1. add tenant/scope/source-locator vocabulary to evidence and docs;
-2. introduce provider registry entries for agent sessions, repo/git/GitHub, Jenkins/deploy, MailWhere, OfficeWhere;
-3. add a `context pack` generation flow over existing evidence/wiki data;
-4. add automatic local capture paths for `.omx`/agent-session/git evidence before adding heavier external integrations;
-5. keep OfficeWhere selective and MailWhere incremental.
+1. Validate Windows installation and live MailWhere/OfficeWhere calls on the managed PC.
+2. Decide whether contextWhere should consume OfficeWhere's dynamic-port discovery file or require an explicit loopback base URL.
+3. Add live GitHub/Jenkins providers only when auth and read-only contracts are approved.
+4. Keep OfficeWhere selective, MailWhere incremental, and graph/vector optional.
 
 ## Durable design docs
 
@@ -60,7 +57,7 @@ Implement the next slice as **scope-first context OS**:
 - `context/decisions/0002-workspace-context-os.md` — corrected product boundary.
 - `.omx/plans/prd-contextwhere-workspace-context-os-*.md` — current ralplan PRD.
 
-## v0.11.0 implementation note
+## Current scope-first implementation
 
 Implemented scope-first runtime semantics:
 

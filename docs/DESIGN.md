@@ -81,6 +81,16 @@ Mail can keep broader history because Outlook/MailWhere is already a structured 
 
 OfficeWhere should not be swept into contextWhere wholesale. Prefer file-link evidence from mail, explicit user/task queries, document metadata, snippets, compare results, and source locators. Full content stays in OfficeWhere/raw files and is fetched only when the task needs it.
 
+### Product and transport ownership
+
+| Repository | Owns | contextWhere consumes through |
+| --- | --- | --- |
+| MailWhere | Outlook read-only mirror, mail/task state, SQLite/FTS5 search | `MailWhere.Cli` JSON and sanitized exports |
+| OfficeWhere | Office/PDF indexing, document search, comparison | Loopback `/api/provider/v1` |
+| contextWhere | Cross-provider evidence, Markdown wiki, context packs | Its own CLI and local evidence store |
+
+The standalone `where-skills` repository is a legacy wrapper, not a fourth product layer. Its combined briefing helper was never implemented, and its orchestration role now belongs here. It remains an archive candidate until contextWhere either consumes OfficeWhere's packaged `provider-discovery.json` or explicitly accepts manual `--officewhere-base-url` configuration as the permanent contract.
+
 ## Context packs
 
 A context pack is the main runtime product:
