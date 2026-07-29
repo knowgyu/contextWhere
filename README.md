@@ -1,5 +1,7 @@
 # contextWhere
 
+[한국어](README.ko.md)
+
 contextWhere is a local-first workspace context OS for developer/operator agents. It collects sanitized evidence from repo state, agent sessions, MailWhere, OfficeWhere, GitHub/Jenkins-style work systems, and explicit notes, then turns that evidence into scoped Context Cards, Markdown drafts, and compact context packs.
 
 ## Current release
