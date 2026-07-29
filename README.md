@@ -6,7 +6,7 @@ MailWhere와 OfficeWhere는 중요한 provider지만, 제품의 전체 경계는
 
 ## 현재 릴리즈
 
-- 최신 로컬 버전: **0.15.0**
+- 최신 로컬 버전: **0.15.1**
 - 원격 저장소: <https://github.com/knowgyu/contextWhere>
 - 기본 브랜치: `main`
 
@@ -84,6 +84,7 @@ contextwhere run --officewhere-query "explicit project or file hint" --json
 ```
 
 OfficeWhere는 기본 sweep 대상이 아니다. 메일 file-link나 명시 query가 있을 때만 선택적으로 조회한다.
+패키징된 OfficeWhere는 `provider-discovery.json`에서 동적 loopback 포트를 자동 발견하며, 명시적 `--officewhere-base-url`이 있으면 그 값을 우선한다.
 
 ## 안전 경계
 

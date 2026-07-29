@@ -38,16 +38,15 @@ Raw providers/work surfaces
 
 ## Current implementation snapshot
 
-The current code version is `0.15.0`. It has a Python/SQLite CLI, scoped evidence ingest, MailWhere/OfficeWhere provider adapters, wiki draft/apply boundaries, lint, session and local git/`.omx` capture, deterministic entity extraction, recall bundles, backup/restore, provider matrix, context packs, `run`/`daily`/`maintain`, autostart planning, and return-to-work drafts.
+The current code version is `0.15.1`. It has a Python/SQLite CLI, scoped evidence ingest, MailWhere/OfficeWhere provider adapters, packaged OfficeWhere discovery, wiki draft/apply boundaries, lint, session and local git/`.omx` capture, deterministic entity extraction, recall bundles, backup/restore, provider matrix, context packs, `run`/`daily`/`maintain`, autostart planning, and return-to-work drafts.
 
 `docs/DESIGN.md` is the canonical architecture source. Repository tags and GitHub Releases are the release source of truth; ignored `.omx` state and older handoffs do not override current tracked docs.
 
 ## Remaining bounded gaps
 
 1. Validate Windows installation and live MailWhere/OfficeWhere calls on the managed PC.
-2. Decide whether contextWhere should consume OfficeWhere's dynamic-port discovery file or require an explicit loopback base URL.
-3. Add live GitHub/Jenkins providers only when auth and read-only contracts are approved.
-4. Keep OfficeWhere selective, MailWhere incremental, and graph/vector optional.
+2. Add live GitHub/Jenkins providers only when auth and read-only contracts are approved.
+3. Keep OfficeWhere selective, MailWhere incremental, and graph/vector optional.
 
 ## Durable design docs
 

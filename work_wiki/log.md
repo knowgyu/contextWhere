@@ -68,3 +68,10 @@ Initialized contextWhere folder from autoresearch discussion. Copied research re
 - Replaced live wiki evidence links to `where-skills` with current product contracts.
 - Marked `where-skills` as an archive candidate, blocked only by the unresolved OfficeWhere dynamic-port discovery consumer gap.
 - Evidence: `docs/DESIGN.md`, `MailWhere/docs/ARCHITECTURE.md`, `OfficeWhere/docs/provider-contract.md`.
+
+## 2026-07-29 — where-skills retirement completed
+
+- Moved OfficeWhere packaged dynamic-port discovery into the contextWhere provider adapter.
+- Kept explicit loopback URL overrides and stale-discovery fallback.
+- Closed the last unique `where-skills` runtime gap so the standalone wrapper can remain archived.
+- Evidence: `src/contextwhere/providers/officewhere.py`, `tests/test_contextwhere.py`, `docs/releases/v0.15.1.md`.

@@ -31,4 +31,4 @@ OfficeWhere should provide selective document evidence:
 
 Do not mirror the full document corpus into contextWhere. Do not store raw document bodies or sensitive full local paths by default. Do not run open/show/reindex/rescan/delete automatically.
 
-Packaged OfficeWhere uses a dynamic loopback port. contextWhere currently requires an explicit validated `--officewhere-base-url`; automatic `provider-discovery.json` consumption remains the only unique `where-skills` helper gap.
+Packaged OfficeWhere uses a dynamic loopback port. contextWhere consumes the user-scoped `provider-discovery.json`, rejects non-loopback URLs, and falls back safely when a discovery file is stale. Explicit `--officewhere-base-url` remains available.

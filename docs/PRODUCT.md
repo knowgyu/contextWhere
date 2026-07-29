@@ -20,7 +20,7 @@ It is not a generic vector database, not a MailWhere/OfficeWhere-only app, and n
 - **Automation-first**: capture, draft, lint, and pack generation should run with minimal user babysitting.
 - **Action-safe**: opening mail/docs, replying, moving, deleting, reindexing, or triggering deploys requires explicit approval.
 
-## Current foundation through v0.15.0
+## Current foundation through v0.15.1
 
 - Python/SQLite CLI with local evidence ledger.
 - MailWhere/OfficeWhere read-only adapters and provider matrix.
@@ -45,7 +45,7 @@ It is not a generic vector database, not a MailWhere/OfficeWhere-only app, and n
 - Add Claude Code and Gemini imports where local formats are stable.
 - Add GitHub issue/PR/release evidence through explicit auth/config.
 - Add Jenkins/deploy runbook/job evidence through read-only provider contracts.
-- Decide OfficeWhere packaged discovery support before retiring the legacy `where-skills` checkout.
+- Retire the legacy `where-skills` checkout after OfficeWhere packaged discovery migration and reference verification.
 - Keep build/deploy triggers action-gated.
 
 ### 1.0 — stable local-first context platform

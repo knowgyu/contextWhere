@@ -35,11 +35,10 @@ Use this order:
 
 ## Current foundation status
 
-The current `0.15.0` code provides the scoped evidence ledger, provider ingest, wiki draft/apply boundaries, context packs, session and local git/`.omx` capture, recall/backup/status, `run`/`daily`/`maintain`, autostart planning, and return-to-work drafts.
+The current `0.15.1` code provides the scoped evidence ledger, provider ingest, OfficeWhere packaged discovery, wiki draft/apply boundaries, context packs, session and local git/`.omx` capture, recall/backup/status, `run`/`daily`/`maintain`, autostart planning, and return-to-work drafts.
 
 ## Remaining product goal
 
 - validate live MailWhere/OfficeWhere paths on the managed Windows PC;
-- decide OfficeWhere dynamic-port discovery before retiring `where-skills`;
 - add approved read-only GitHub/Jenkins providers;
 - keep OfficeWhere selective and graph/vector optional.

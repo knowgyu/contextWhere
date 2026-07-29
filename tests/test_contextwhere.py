@@ -11,7 +11,8 @@ from contextwhere import __version__
 from contextwhere.cli import main
 from contextwhere.config import resolve_paths
 from contextwhere.db import connect
-from contextwhere.providers.officewhere import is_loopback, OfficeWhereProvider
+from contextwhere.providers import officewhere as officewhere_module
+from contextwhere.providers.officewhere import discovered_base_urls, is_loopback, OfficeWhereProvider
 from contextwhere.providers.mailwhere import MailWhereProvider
 from contextwhere.schemas import evidence_from_item
 
@@ -300,6 +301,81 @@ def test_officewhere_loopback_policy():
     assert not result.ok
     assert result.unavailable is not None
     assert result.unavailable["reason"] == "unsafe_url"
+
+
+def test_officewhere_discovery_rejects_remote_and_uses_legacy_fallback(tmp_path):
+    local = tmp_path / "Local"
+    roaming = tmp_path / "Roaming"
+    for root, provider_name, base_url in (
+        (local, "MailWhere", "http://127.0.0.1:24860"),
+        (roaming, "OfficeWhere", "http://127.0.0.1:24861"),
+    ):
+        path = root / "OfficeWhere" / "provider-discovery.json"
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps({
+            "provider": provider_name,
+            "contract_version": "v1",
+            "api_base_path": "/api/provider/v1",
+            "base_url": base_url,
+        }), encoding="utf-8")
+
+    assert discovered_base_urls(
+        env={"LOCALAPPDATA": str(local), "APPDATA": str(roaming)},
+        home=tmp_path,
+        platform_name="win32",
+    ) == ["http://127.0.0.1:24861"]
+
+    discovery = tmp_path / "xdg" / "OfficeWhere" / "provider-discovery.json"
+    discovery.parent.mkdir(parents=True)
+    discovery.write_text(json.dumps({
+        "provider": "OfficeWhere",
+        "contract_version": "v1",
+        "api_base_path": "/api/provider/v1",
+        "base_url": "https://example.com",
+    }), encoding="utf-8")
+    assert discovered_base_urls(
+        env={"XDG_CONFIG_HOME": str(tmp_path / "xdg")},
+        home=tmp_path,
+        platform_name="linux",
+    ) == []
+
+
+def test_officewhere_provider_falls_back_when_discovery_is_stale(tmp_path, monkeypatch):
+    discovery = tmp_path / "OfficeWhere" / "provider-discovery.json"
+    discovery.parent.mkdir()
+    discovery.write_text(json.dumps({
+        "provider": "OfficeWhere",
+        "contract_version": "v1",
+        "api_base_path": "/api/provider/v1",
+        "base_url": "http://127.0.0.1:24861",
+    }), encoding="utf-8")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.delenv("OFFICEWHERE_BASE_URL", raising=False)
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return json.dumps({
+                "provider": "OfficeWhere",
+                "contract_version": "v1",
+                "app_version": "0.16.1",
+            }).encode()
+
+    def fake_urlopen(request, timeout):
+        assert timeout == 5.0
+        if "24861" in request.full_url:
+            raise officewhere_module.URLError("stale")
+        return Response()
+
+    monkeypatch.setattr(officewhere_module, "urlopen", fake_urlopen)
+    provider = OfficeWhereProvider()
+    assert provider.health().ok
+    assert provider.base_url == officewhere_module.DEFAULT_BASE_URL
 
 
 def test_wiki_draft_apply_lint_e2e(tmp_path, capsys):

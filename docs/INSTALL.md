@@ -1,6 +1,6 @@
 # contextWhere install and quick start
 
-contextWhere 0.15.0 targets Windows 11 first, with Ubuntu supported. It is a local-first Python/SQLite CLI workspace context OS slice. Provider ingest is read-only; wiki writes happen only through audited `wiki apply` drafts.
+contextWhere 0.15.1 targets Windows 11 first, with Ubuntu supported. It is a local-first Python/SQLite CLI workspace context OS slice. Provider ingest is read-only; wiki writes happen only through audited `wiki apply` drafts.
 
 ## Requirements
 
@@ -97,7 +97,7 @@ OfficeWhere search is opt-in and must be loopback/local:
 contextwhere run --officewhere-base-url http://127.0.0.1:18765 --officewhere-query "file or project hint from mail" --json
 ```
 
-Packaged OfficeWhere normally uses a dynamic loopback port. contextWhere does not yet read `provider-discovery.json`, so pass the current validated base URL explicitly. Missing providers return structured `status:"unavailable"` entries and are safe to continue. Non-loopback OfficeWhere URLs are rejected as `unsafe_url`.
+Packaged OfficeWhere normally uses a dynamic loopback port. contextWhere reads the current user-scoped `provider-discovery.json` first and falls back to the development URL when discovery is absent or stale. `OFFICEWHERE_BASE_URL` or `--officewhere-base-url` remains an explicit loopback-only override. Missing providers return structured `status:"unavailable"` entries and are safe to continue. Non-loopback URLs are rejected as `unsafe_url`.
 
 ## Routine maintenance
 

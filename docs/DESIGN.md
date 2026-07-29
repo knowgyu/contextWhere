@@ -89,7 +89,7 @@ OfficeWhere should not be swept into contextWhere wholesale. Prefer file-link ev
 | OfficeWhere | Office/PDF indexing, document search, comparison | Loopback `/api/provider/v1` |
 | contextWhere | Cross-provider evidence, Markdown wiki, context packs | Its own CLI and local evidence store |
 
-The standalone `where-skills` repository is a legacy wrapper, not a fourth product layer. Its combined briefing helper was never implemented, and its orchestration role now belongs here. It remains an archive candidate until contextWhere either consumes OfficeWhere's packaged `provider-discovery.json` or explicitly accepts manual `--officewhere-base-url` configuration as the permanent contract.
+The standalone `where-skills` repository was a legacy wrapper, not a fourth product layer. Its combined briefing helper was never implemented, its orchestration role belongs here, and contextWhere now consumes OfficeWhere's packaged `provider-discovery.json`. The wrapper can therefore remain archived rather than installed or maintained.
 
 ## Context packs
 
