@@ -929,6 +929,39 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     emit(result, args.json)
     return 0 if result.get("ok") else 2
 
+
+def cmd_quickstart(args: argparse.Namespace) -> int:
+    root = Path(args.root).expanduser().resolve()
+    workspace = Path(args.workspace).expanduser().resolve() if args.workspace else root.parent
+    setup = setup_home(args.home)
+    home = setup["home"]
+
+    paths = resolve_paths(root)
+    ensure_dirs(paths)
+    init_db(paths.db_path)
+    paths.wiki_dir.mkdir(parents=True, exist_ok=True)
+    index = paths.wiki_dir / "index.md"
+    if not index.exists():
+        index.write_text("# ContextWhere Wiki Index\n", encoding="utf-8")
+    workspace_entry = register("workspace", workspace, home=home)
+    repository_entry = register("repository", root, workspace=workspace, home=home)
+    doctor = doctor_home(home)
+    status = project_status(root)
+    result = {
+        "ok": doctor["ok"] and status["ok"],
+        "home": home,
+        "workspace": workspace_entry,
+        "repository": repository_entry,
+        "status": status,
+        "doctor": doctor,
+        "next_steps": [
+            f"contextwhere preflight --repository {root.name} --json",
+            f"contextwhere status --root {root} --json",
+        ],
+    }
+    emit(result, args.json)
+    return 0 if result["ok"] else 2
+
 def add_common(p: argparse.ArgumentParser) -> None:
     p.add_argument("--json", action="store_true")
     p.add_argument("--root", dest="root_override")
@@ -1306,6 +1339,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--root", default=".")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_doctor)
+
+    p = sub.add_parser("quickstart", help="Initialize global and repository-local storage, then verify both")
+    p.add_argument("--home")
+    p.add_argument("--root", default=".")
+    p.add_argument("--workspace", help="Defaults to the parent of --root")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_quickstart)
 
     wiki = sub.add_parser("wiki")
     wiki_sub = wiki.add_subparsers(dest="wiki_command", required=True)

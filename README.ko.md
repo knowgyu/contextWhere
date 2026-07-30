@@ -35,7 +35,22 @@ integration을 추가했습니다.
 원본 메일·문서·prompt log·provider 상태를 수정하지 않습니다. Provider text는
 증거이며 instruction이 아닙니다.
 
-## checkout에서 빠르게 시작하기
+## 설치하고 바로 사용하기
+
+운영자용 경로는 Python 3.11+만 필요하며 checkout이나 `uv`는 필요하지 않습니다.
+contextWhere가 관리할 저장소에서 실행합니다.
+
+```bash
+python3 -m pip install --user --upgrade https://github.com/knowgyu/contextWhere/archive/refs/heads/main.zip
+python3 -m contextwhere quickstart --root . --workspace .. --json
+```
+
+`quickstart`는 전역 home과 저장소별 저장소를 만들고, workspace/repository를 등록한
+뒤 둘 다 확인합니다. 필요하면 새 터미널을 연 뒤 `contextwhere status --json` 또는
+`contextwhere preflight --json`만 실행하면 됩니다. Windows에서는 `python3` 대신
+`py`를 사용합니다.
+
+## Contributor checkout
 
 ```bash
 uv sync
@@ -51,11 +66,10 @@ contextWhere는 MailWhere와 OfficeWhere 곁에서 로컬 우선 컨텍스트 co
 동작합니다. 세 도구는 같은 PC에 두며, contextWhere가 provider 데이터를 업로드하거나
 provider 접근을 스스로 시작하지 않습니다.
 
-현재 `v0.16.0`에서는 이 checkout에서 설치한 뒤 위 명령을 실행하고, 다음의 작은
-순서로 사용합니다.
+빠른 설치 뒤 다음의 작은 순서로 사용합니다.
 
 1. Provider가 필요하면 각자의 릴리스 채널에서 MailWhere와 OfficeWhere를 설치하거나 갱신합니다.
-2. `contextwhere setup --json`과 `contextwhere doctor --json`을 실행합니다.
+2. `contextwhere status --json`으로 로컬 설정을 확인합니다.
 3. `contextwhere integrations install --agent codex --dry-run --json`으로 agent bridge를 미리 보고, 대상 경로를 검토한 뒤에만 설치합니다.
 4. Provider evidence가 실제로 필요할 때만 MailWhere/OfficeWhere ingest 또는 search를 실행합니다. 일반 agent preflight는 scope가 맞는 active card만 읽습니다.
 
@@ -63,25 +77,15 @@ provider 접근을 스스로 시작하지 않습니다.
 
 다음 설치 방식은 checksum과 local Codex plugin을 포함한 Windows portable companion
 bundle입니다. 아직 **릴리스 asset으로 제공되지 않습니다**. public npm 배포는 보류되어
-있으며, portable bundle이 나올 때까지 `uv`는 contributor 및 checkout 설치 방식으로
-사용됩니다.
-
-workspace와 repository를 등록합니다.
-
-```bash
-uv run contextwhere registry register workspace /home/you/workspace --json
-uv run contextwhere registry register repository /home/you/workspace/contextWhere --workspace /home/you/workspace --json
-uv run contextwhere registry list --json
-```
+있으며, 위의 직접 Python 설치가 현재 운영자 경로이고 `uv`는 contributor 전용입니다.
 
 repo-local 점검과 context 명령을 실행합니다.
 
 ```bash
-uv run contextwhere init --json
-uv run contextwhere providers matrix --json
-uv run contextwhere status --json
-uv run contextwhere context pack --query "current task" --json
-uv run contextwhere maintain --json
+contextwhere status --json
+contextwhere providers matrix --json
+contextwhere context pack --query "current task" --json
+contextwhere maintain --json
 ```
 
 ## Context Card 예시

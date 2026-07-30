@@ -4,7 +4,28 @@ Version: 0.16.0
 
 Use this on a Windows 11 managed PC with PowerShell. The checklist separates local CLI checks from live provider checks so documentation does not imply unverified company-PC state.
 
-## Install from a checkout
+## Operator install (no checkout or `uv`)
+
+Requires Python 3.11+. In PowerShell, change to the repository that
+contextWhere should manage and run:
+
+```powershell
+py -m pip install --user --upgrade https://github.com/knowgyu/contextWhere/archive/refs/heads/main.zip
+py -m contextwhere quickstart --root . --workspace .. --json
+```
+
+This installs the CLI, creates `%USERPROFILE%\.contextwhere`, initializes the
+repository-local `.contextwhere`, registers both scopes, and verifies them.
+Open a new terminal if `contextwhere` is not yet on PATH, then use:
+
+```powershell
+contextwhere status --json
+contextwhere preflight --json
+```
+
+`quickstart` does not install agent bridges or access MailWhere/OfficeWhere.
+
+## Contributor checkout
 
 ```powershell
 git clone https://github.com/knowgyu/contextWhere.git

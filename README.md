@@ -25,7 +25,23 @@ v0.16.0 adds the global home memory layer, registry/scopes, Context Card lifecyc
 
 It does not edit raw mail, documents, prompt logs, or provider state. Provider text is evidence, not instructions.
 
-## Quick start from a checkout
+## Install and start using it
+
+The operator path needs Python 3.11+ but does not need a checkout or `uv`.
+Run this from the repository you want contextWhere to manage:
+
+```bash
+python3 -m pip install --user --upgrade https://github.com/knowgyu/contextWhere/archive/refs/heads/main.zip
+python3 -m contextwhere quickstart --root . --workspace .. --json
+```
+
+`quickstart` creates the global home and local repository storage, registers
+the workspace/repository, and verifies both. Start a new terminal if needed,
+then use `contextwhere status --json` or `contextwhere preflight --json`.
+
+On Windows, replace `python3` with `py`.
+
+## Contributor checkout
 
 ```bash
 uv sync
@@ -41,12 +57,11 @@ contextWhere can run alongside MailWhere and OfficeWhere as a local-first
 context companion. Keep the tools on the same PC; contextWhere does not upload
 provider data or start provider access by itself.
 
-For the current `v0.16.0` release, install from this checkout (the commands
-above), then use this small setup sequence:
+After the quick start, use this small setup sequence:
 
 1. Install or update MailWhere and OfficeWhere from their own release channels
    if you need those providers.
-2. Run `contextwhere setup --json` and `contextwhere doctor --json`.
+2. Run `contextwhere status --json` to confirm the local setup.
 3. Preview an agent bridge with `contextwhere integrations install --agent codex --dry-run --json`; install only after reviewing the reported path.
 4. Run MailWhere or OfficeWhere ingest/search only when you explicitly need
    provider evidence. Normal agent preflight reads only scoped active cards.
@@ -55,25 +70,16 @@ above), then use this small setup sequence:
 
 The intended next installer is a Windows portable companion bundle with
 checksums and a local Codex plugin. It is **not yet a released asset**. Public
-npm publication is deferred; `uv` remains the contributor and current
-checkout-install tool until the portable bundle exists.
-
-Register the workspace and repository:
-
-```bash
-uv run contextwhere registry register workspace /home/you/workspace --json
-uv run contextwhere registry register repository /home/you/workspace/contextWhere --workspace /home/you/workspace --json
-uv run contextwhere registry list --json
-```
+npm publication is deferred; the direct Python install above is the current
+operator path, while `uv` remains contributor-only.
 
 Run repo-local checks and context commands:
 
 ```bash
-uv run contextwhere init --json
-uv run contextwhere providers matrix --json
-uv run contextwhere status --json
-uv run contextwhere context pack --query "current task" --json
-uv run contextwhere maintain --json
+contextwhere status --json
+contextwhere providers matrix --json
+contextwhere context pack --query "current task" --json
+contextwhere maintain --json
 ```
 
 ## Context Card example

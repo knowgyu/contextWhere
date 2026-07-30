@@ -225,3 +225,35 @@ def test_setup_and_doctor_use_windows_userprofile_home_when_simulated(tmp_path: 
     doctor = assert_ok(run_cw(["doctor", "--json"], home=userprofile, env=env))
     assert Path(doctor["home"]) == userprofile / ".contextwhere"
     assert doctor["platform"] == "Windows"
+
+
+def test_quickstart_initializes_and_registers_a_repository_without_agent_bridges(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    workspace = tmp_path / "workspace"
+    repo = workspace / "repo"
+    repo.mkdir(parents=True)
+
+    result = assert_ok(
+        run_cw(
+            [
+                "quickstart",
+                "--home",
+                str(cw_home(home)),
+                "--root",
+                str(repo),
+                "--workspace",
+                str(workspace),
+                "--json",
+            ],
+            home=home,
+        )
+    )
+
+    assert result["doctor"]["ok"] is True
+    assert result["status"]["ok"] is True
+    assert result["workspace"]["path"] == str(workspace)
+    assert result["repository"]["path"] == str(repo)
+    assert result["repository"]["workspace_id"] == result["workspace"]["id"]
+    assert (repo / ".contextwhere" / "contextwhere.sqlite3").exists()
+    assert (repo / "work_wiki" / "index.md").exists()
+    assert not (home / ".codex").exists()

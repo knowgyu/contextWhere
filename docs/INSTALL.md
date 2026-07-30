@@ -15,6 +15,36 @@ contextWhere targets Windows 11 first and also supports Linux/macOS development 
 
 Use `--home <path>` for portable tests or managed-PC validation.
 
+## Operator install (no checkout or `uv`)
+
+Requires Python 3.11+. Run this from the repository that contextWhere should
+manage; it installs the CLI, initializes global and repository-local storage,
+registers both scopes, and verifies the result.
+
+Linux/macOS:
+
+```bash
+python3 -m pip install --user --upgrade https://github.com/knowgyu/contextWhere/archive/refs/heads/main.zip
+python3 -m contextwhere quickstart --root . --workspace .. --json
+```
+
+Windows PowerShell:
+
+```powershell
+py -m pip install --user --upgrade https://github.com/knowgyu/contextWhere/archive/refs/heads/main.zip
+py -m contextwhere quickstart --root . --workspace .. --json
+```
+
+After opening a new terminal if necessary, the everyday checks are:
+
+```bash
+contextwhere status --json
+contextwhere preflight --json
+```
+
+`quickstart` never installs agent bridges or contacts providers. Those remain
+explicit opt-in actions.
+
 ## Development checkout
 
 ```bash
@@ -36,7 +66,7 @@ pytest -q
 contextwhere verify --json
 ```
 
-## Global setup
+## Manual global setup
 
 Preview first:
 
@@ -61,7 +91,7 @@ contextwhere integrations install --agent codex --json
 
 Use `--agent claude` or `--agent gemini` for the other supported agents. `setup --install-integrations --json` installs all bridges; use it only when that side effect is intended.
 
-## Register workspaces and repositories
+## Manual workspace and repository registration
 
 ```bash
 contextwhere registry register workspace /home/you/workspace --json
